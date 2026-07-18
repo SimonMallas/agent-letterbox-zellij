@@ -1,6 +1,8 @@
 # Agent Letterbox for Zellij
 
-## Ring the agent. Keep the message. Work as a team.
+## Ring the bell. Create the team.
+
+![Agent Letterbox for Zellij](assets/hero/letterbox-hero-1600x900.png)
 
 **Agent Letterbox for Zellij turns separate coding-agent terminals into a live team inside [Zellij](https://zellij.dev).**
 
@@ -22,17 +24,25 @@ The agent checks the durable message, replies, and hands work onward.
 
 No servers beyond Zellij’s local multiplexer. No SSH/remote transport, plugins marketplace, desktop apps, webhooks, cmux, or tmux.
 
-## Install (copy / paste)
+## Install
+
+### Option A — Recommended: copy/paste installer
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/SimonMallas/agent-letterbox-zellij/main/install.sh | sh
+export PATH="$HOME/.local/bin:$PATH"
+letterbox zellij setup --agents pi,claude,grok,hermes --automatic-doorbells
+source "$HOME/.agent-letterbox/env.sh"
+```
+
+### Option B — Manual Git install
 
 ```bash
 git clone https://github.com/SimonMallas/agent-letterbox-zellij.git \
   ~/Developer/agent-letterbox-zellij
 cd ~/Developer/agent-letterbox-zellij
-
 chmod +x bin/letterbox adapters/*.sh tests/*.sh
 export PATH="$PWD/bin:$PATH"
-
-# One-time team bootstrap (creates ~/.agent-letterbox and links the CLI)
 letterbox zellij setup --agents pi,claude,grok,hermes --automatic-doorbells
 source "$HOME/.agent-letterbox/env.sh"
 ```
