@@ -11,9 +11,9 @@ letter written to inbox
 
 ## Lookup order
 
-1. **Live registry** — `$LETTERBOX_DIR/zellij-agents.tsv`  
+1. **Live registry** — `$LETTERBOX_DIR/zellij-agents.tsv`
    `agent`, `ZELLIJ_PANE_ID`, `ZELLIJ_SESSION_NAME`, timestamp
-2. **Static patterns** — `$LETTERBOX_DIR/zellij-patterns.tsv`  
+2. **Static patterns** — `$LETTERBOX_DIR/zellij-patterns.tsv`
    `agent`, `pane_id`, `session_name`
 
 Pane ids accept numeric (`0`) or token form (`terminal_0`); the adapter normalizes to Zellij’s `--pane-id` form.

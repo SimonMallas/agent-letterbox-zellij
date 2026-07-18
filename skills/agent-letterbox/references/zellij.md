@@ -4,7 +4,7 @@ Automatic live doorbells use `adapters/zellij.sh`.
 
 Lookup order:
 
-1. Live registry (`LETTERBOX_ZELLIJ_REGISTRY`) from `letterbox zellij run` / `register`  
+1. Live registry (`LETTERBOX_ZELLIJ_REGISTRY`) from `letterbox zellij run` / `register`
    Records `agent`, `ZELLIJ_PANE_ID`, and `ZELLIJ_SESSION_NAME`.
 2. Static patterns (`LETTERBOX_ZELLIJ_PATTERNS`)
 
