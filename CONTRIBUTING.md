@@ -1,17 +1,16 @@
-# Contributing to Agent Letterbox for tmux
+# Contributing to Agent Letterbox for Zellij
 
-## Scope (v0.1)
+## Scope (v0.1 local)
 
 **Supported**
 
 - Durable Markdown letters, reply-first handling, atomic publication, advisory locks
-- Automatic opt-in tmux doorbells to live registered panes (or static session patterns)
-- Local and SSH/headless tmux workflows where users arrange sessions themselves
+- Automatic opt-in Zellij doorbells to live registered panes
+- Local Zellij sessions only
 
 **Not in scope**
 
-- cmux, desktop agents, webhooks, persistent watchers, relay services, or required daemons
-- Autonomous unattended processing without a human-in-the-loop terminal agent
+- cmux, tmux product trees, desktop agents, webhooks, remote/SSH transport packaging, marketplace plugins, servers beyond local Zellij
 
 ## Development
 
@@ -20,10 +19,9 @@ chmod +x bin/letterbox adapters/*.sh tests/*.sh
 make test
 ```
 
-Expect each script to print an explicit **PASS** (or SKIP when tmux is unavailable).
+Expect each script to print an explicit **PASS** (or SKIP when Zellij is unavailable).
 
-## Pull requests
+## Guidelines
 
-- Prefer small, reviewable commits
-- Keep the CLI dependency-free (Bash + standard Unix tools + tmux)
-- Do not reintroduce cmux or desktop adapters into this product tree
+- Keep the CLI dependency-free (Bash + standard Unix tools + Zellij)
+- Do not reintroduce cmux, tmux, or Herdr adapters into this product tree

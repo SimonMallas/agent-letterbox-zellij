@@ -1,0 +1,2 @@
+# Optional static fallback: agent<TAB>pane_id<TAB>session_name
+# Prefer live self-registration: letterbox zellij run <agent> -- <command>
