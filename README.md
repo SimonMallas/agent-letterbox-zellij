@@ -6,15 +6,66 @@
 
 **Agent Letterbox for Zellij turns separate coding-agent terminals into a live team inside [Zellij](https://zellij.dev).**
 
-A message is saved safely on disk. When the recipient is live, Zellij receives one short instruction in its pane:
+## What it is
+
+Agent Letterbox is not a model, a new terminal, or a second agent harness. It is the coordination layer that lets the agents you already run hand work to one another without making you the human message relay.
+
+A task lands as a durable letter in a teammate's inbox. Optionally, when submit is enabled, the doorbell rings in the live pane:
 
 ```text
-📬 letterbox doorbell: unacked delegate in <letterbox>/<agent>/inbox/ — please check
+📬 letterbox doorbell: check your inbox
 ```
 
-The agent checks the durable message, replies, and hands work onward.
+The agent wakes, picks up the real task from disk, replies, and keeps the work flowing. The terminal gets the knock; the inbox keeps the message.
 
-> **The doorbell makes it a team.**
+> **Agent mail that waits safely—and a bell brings it alive.**
+
+### Platform difference (read this)
+
+**Without `LETTERBOX_ZELLIJ_SUBMIT=1`, a durable letter is still delivered to the recipient's inbox, but no recipient-side terminal nudge occurs.** The adapter only reports that a live target was found. Agents must still check their inbox at startup, after tasks, and at checkpoints. Enable `--automatic-doorbells` (or export `LETTERBOX_ZELLIJ_SUBMIT=1`) only on dedicated agent panes if you want the knock injected.
+
+## Why it exists
+
+Without coordination, a multi-agent workflow means juggling panes, copying task text, remembering who owns what, and hoping an agent eventually sees a message.
+
+Directly injecting the full task into another terminal is fast, but the terminal becomes the only message record. Agent Letterbox keeps the fast part—the optional live doorbell—while putting the actual work in a durable, inspectable letter.
+
+```text
+full task    → durable inbox letter
+live wake-up → short generic doorbell (only when SUBMIT=1)
+reply        → sender inbox
+archive      → recipient processed history
+```
+
+Read the full comparison in [Why Letterbox?](docs/why-letterbox.md).
+
+## v0.2 lifecycle in one screen
+
+Public v0.2 is a **correctness** release: acknowledgements no longer file work away.
+
+```text
+send task (requires_ack=true)
+  → recipient: reply ack     # accepted WIP; letter stays in inbox (.md.ack)
+  → recipient: does the work
+  → recipient: reply result  # terminal; letter moves to processed/
+```
+
+Non-task letters (`info` / `status` / received replies) are filed with no invented response:
+
+```bash
+letterbox file <id>
+```
+
+See [SPEC.md](SPEC.md) and [docs/lifecycle.md](docs/lifecycle.md).
+
+## What this opens up
+
+- **Durable coordination** — letters survive offline, restart, and missed knocks.
+- **Optional near-instant wake-up** — with submit enabled, a live Zellij agent can be nudged without human copy/paste.
+- **Real handoffs** — implementation, review, research, QA, and fixes move as explicit owned work.
+- **Clear responsibility** — task letters require ACK/NACK/RESULT; ACK means in progress, not done.
+- **Evidence over claims** — inbox, reply, sidecar, and processed files show what happened even when an agent conversation is gone.
+- **Less human relay work** — you direct the team instead of pasting the same request between terminals.
 
 ## What you need
 
@@ -22,7 +73,7 @@ The agent checks the durable message, replies, and hands work onward.
 - A running local Zellij session
 - Agents you already run in terminals (any coding-agent CLI you already use)
 
-No servers beyond Zellij’s local multiplexer. No SSH/remote transport, plugins marketplace, desktop apps, webhooks, cmux, or tmux.
+No servers beyond Zellij’s local multiplexer. No SSH/remote transport, plugins marketplace, desktop apps, webhooks, cmux, tmux, or Herdr in this product tree.
 
 ## Install
 
@@ -39,15 +90,15 @@ source "$HOME/.agent-letterbox/env.sh"
 
 ```bash
 git clone https://github.com/SimonMallas/agent-letterbox-zellij.git \
-  ~/Developer/agent-letterbox-zellij
-cd ~/Developer/agent-letterbox-zellij
+  ~/src/agent-letterbox-zellij
+cd ~/src/agent-letterbox-zellij
 chmod +x bin/letterbox adapters/*.sh tests/*.sh
 export PATH="$PWD/bin:$PATH"
 letterbox zellij setup --agents planner,reviewer,builder,researcher --automatic-doorbells
 source "$HOME/.agent-letterbox/env.sh"
 ```
 
-Check:
+Omit `--automatic-doorbells` if you want durable mail only (no pane inject). Check:
 
 ```bash
 letterbox --version
@@ -69,7 +120,7 @@ letterbox zellij run builder -- <your-agent-cli>
 letterbox zellij run researcher -- <your-agent-cli>
 ```
 
-`zellij run` registers the current `ZELLIJ_PANE_ID` **and** `ZELLIJ_SESSION_NAME` for live doorbells, then starts the command.
+`zellij run` registers the current `ZELLIJ_PANE_ID` **and** `ZELLIJ_SESSION_NAME` for live targeting, then starts the command.
 
 If a pane was rebuilt:
 
@@ -78,7 +129,7 @@ letterbox zellij register planner
 letterbox zellij status
 ```
 
-## Send a live handoff
+## Send a live handoff (ack, then result)
 
 ```bash
 source "$HOME/.agent-letterbox/env.sh"
@@ -88,12 +139,34 @@ printf '%s\n' 'Review src/auth.ts and report correctness findings.' |
   letterbox send reviewer delegate auth-review --ack --now
 ```
 
-1. Letter lands in the reviewer’s inbox
-2. Doorbell is injected into the reviewer’s registered Zellij pane (`write-chars` + `write 13`)
-3. The reviewer ACKs / works / replies with `letterbox reply`
-4. Original letter is archived
+Prefer `printf … | letterbox …` for bodies. Avoid unquoted heredocs when the text may contain `$` or backticks.
 
-> `LETTERBOX_ZELLIJ_SUBMIT=1` (set by `--automatic-doorbells`) injects into a live pane. Use dedicated agent panes only.
+1. Letter lands in the reviewer’s inbox (always, if publish succeeds)
+2. **If** `LETTERBOX_ZELLIJ_SUBMIT=1`: doorbell is injected into the reviewer’s registered pane (`write-chars` + Enter byte 13). **If not:** no terminal nudge — the letter still waits in the inbox
+3. The reviewer accepts (non-terminal):
+
+```bash
+printf '%s\n' 'ACK: reviewing auth.ts now.' |
+  LETTERBOX_AGENT=reviewer letterbox reply <message-id-or-inbox-path> ack auth-review --now
+```
+
+4. The letter stays in inbox with an `.md.ack` sidecar (`letterbox check` shows `[ACCEPTED]`)
+5. When finished, close it:
+
+```bash
+printf '%s\n' 'RESULT: no critical issues; two nits in findings.md.' |
+  LETTERBOX_AGENT=reviewer letterbox reply <message-id-or-inbox-path> result auth-review --now
+```
+
+Only `nack` or final `result` moves the original letter to `processed/`.
+
+## Pre-release note
+
+If you checked out this repository before the v0.2.0 tag, one behaviour has changed and it matters: **acknowledging a letter no longer files it away.** `letterbox reply <id> ack` now marks the letter as accepted work in progress and leaves it in the inbox; only `nack` and `result` close it. Previously an acknowledgement archived the letter, so accepted work disappeared from the inbox that was tracking it.
+
+There is no data migration. The message format is unchanged and your existing letters remain valid. Pull, and carry on.
+
+Two notes: your inbox may show more letters than before — those are letters an acknowledgement wrongly archived, and seeing them again is the fix working. And all agents in a team should run the same version. If you intentionally downgrade to v0.1, delete leftover `.md.ack` sidecars first.
 
 ## Test
 
@@ -105,11 +178,14 @@ Requires `zellij` on PATH (0.44.x syntax is the authority for this product).
 
 ## Learn more
 
+- [docs/lifecycle.md](docs/lifecycle.md) — task vs non-task, ACK/NACK/RESULT, `file`
 - [docs/why-letterbox.md](docs/why-letterbox.md) — why durable letters plus generic doorbells beat direct task injection
 - [docs/team-setup.md](docs/team-setup.md) — full Zellij team bootstrap
-- [docs/zellij.md](docs/zellij.md) — adapter details and safety
-- [SPEC.md](SPEC.md) — message format and reply-first semantics
+- [docs/zellij.md](docs/zellij.md) — adapter details, registry/session, SUBMIT behaviour, recovery
+- [SPEC.md](SPEC.md) — normative protocol (v0.2)
 - [SECURITY.md](SECURITY.md) — threat model
+- [ROADMAP.md](ROADMAP.md) — scope and deferred items
+- [CHANGELOG.md](CHANGELOG.md) — user-visible changes
 
 ## License
 

@@ -6,7 +6,7 @@ Agent Letterbox deliberately uses a different split:
 
 ```text
 Durable task content → letter on disk
-Live wake-up         → short generic doorbell in the terminal
+Live wake-up         → short generic doorbell in the terminal (optional on Zellij)
 ```
 
 ## The direct-injection model
@@ -23,35 +23,35 @@ This is fast, but the terminal becomes both the message transport and the work r
 
 ```text
 write full task to Agent B's inbox
-→ inject: “📬 letterbox doorbell: check your inbox”
+→ optionally inject: “📬 letterbox doorbell: check your inbox”
 → Agent B reads the durable letter
 → Agent B ACKs (work stays visible), then RESULTs (archives)
 ```
 
-The doorbell is still an automatic live-agent wake-up. It is not a human notification or a manual relay. It is best-effort; the letter is the record.
+On Zellij, the inject step requires `LETTERBOX_ZELLIJ_SUBMIT=1`. Without it, the letter still waits safely; there is simply no terminal nudge. The doorbell is best-effort; the letter is the record.
 
 ## Why separate the letter from the bell?
 
 | Direct task injection | Letterbox + generic doorbell |
 |---|---|
-| Fastest local handoff | Near-instant live handoff |
+| Fastest local handoff | Near-instant live handoff when submit is on |
 | Task text lives in terminal history | Task is a durable Markdown file |
 | Weak recovery if a terminal is offline or state is wrong | Letter waits safely for startup/resume/checkpoint |
 | Long text may be duplicated on retry | Retry only rings the bell; letter remains one source of truth |
 | Harder to inspect/audit task ownership | Inbox, ACK sidecar, result, and processed archive provide an audit trail |
-| Arbitrary task content is injected into a live composer | Only a fixed generic line is injected |
+| Arbitrary task content is injected into a live composer | Only a fixed generic line is injected (and only when submit is on) |
 
-Terminal scrollback is a weaker boundary than the filesystem, so the task never goes through the doorbell line. That matters even more on shared or detached multiplexer sessions.
+Terminal scrollback is a weaker boundary than the filesystem, so the task never goes through the knock line.
 
 ## The practical result
 
-Agent Letterbox keeps the useful part of direct injection:
+Agent Letterbox keeps the useful part of direct injection when you opt in:
 
 ```text
 wake the live agent now
 ```
 
-while making the actual task durable:
+while making the actual task durable either way:
 
 ```text
 keep the message safe, inspectable, and recoverable
