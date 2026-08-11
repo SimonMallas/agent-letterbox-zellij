@@ -16,13 +16,13 @@ A task lands as a durable letter in a teammate's inbox. Optionally, when submit 
 📬 letterbox doorbell: check your inbox
 ```
 
-The agent wakes, picks up the real task from disk, replies, and keeps the work flowing. The terminal gets the knock; the inbox keeps the message.
+The agent wakes, picks up the real task from disk, replies, and keeps the work flowing. The terminal gets a ring; the inbox keeps the message.
 
 > **Agent mail that waits safely—and a bell brings it alive.**
 
 ### Platform difference (read this)
 
-**Without `LETTERBOX_ZELLIJ_SUBMIT=1`, a durable letter is still delivered to the recipient's inbox, but no recipient-side terminal nudge occurs.** The adapter only reports that a live target was found. Agents must still check their inbox at startup, after tasks, and at checkpoints. Enable `--automatic-doorbells` (or export `LETTERBOX_ZELLIJ_SUBMIT=1`) only on dedicated agent panes if you want the knock injected.
+**Without `LETTERBOX_ZELLIJ_SUBMIT=1`, a durable letter is still delivered to the recipient's inbox, but no recipient-side terminal ring occurs.** The adapter only reports that a live target was found. Agents must still check their inbox at startup, after tasks, and at checkpoints. Enable `--automatic-doorbells` (or export `LETTERBOX_ZELLIJ_SUBMIT=1`) only on dedicated agent panes if you want the terminal to receive a ring.
 
 ## Why it exists
 
