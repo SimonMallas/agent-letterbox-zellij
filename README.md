@@ -20,7 +20,7 @@ The agent checks the durable message, replies, and hands work onward.
 
 - Bash, Git, and **Zellij 0.44+** (`zellij --version`)
 - A running local Zellij session
-- Agents you already run in terminals (Claude Code, Pi, Grok, Hermes, …)
+- Agents you already run in terminals (any coding-agent CLI you already use)
 
 No servers beyond Zellij’s local multiplexer. No SSH/remote transport, plugins marketplace, desktop apps, webhooks, cmux, or tmux.
 
@@ -31,7 +31,7 @@ No servers beyond Zellij’s local multiplexer. No SSH/remote transport, plugins
 ```bash
 curl -fsSL https://raw.githubusercontent.com/SimonMallas/agent-letterbox-zellij/main/install.sh | sh
 export PATH="$HOME/.local/bin:$PATH"
-letterbox zellij setup --agents pi,claude,grok,hermes --automatic-doorbells
+letterbox zellij setup --agents planner,reviewer,builder,researcher --automatic-doorbells
 source "$HOME/.agent-letterbox/env.sh"
 ```
 
@@ -43,7 +43,7 @@ git clone https://github.com/SimonMallas/agent-letterbox-zellij.git \
 cd ~/Developer/agent-letterbox-zellij
 chmod +x bin/letterbox adapters/*.sh tests/*.sh
 export PATH="$PWD/bin:$PATH"
-letterbox zellij setup --agents pi,claude,grok,hermes --automatic-doorbells
+letterbox zellij setup --agents planner,reviewer,builder,researcher --automatic-doorbells
 source "$HOME/.agent-letterbox/env.sh"
 ```
 
@@ -62,11 +62,11 @@ Open Zellij and arrange agents however the task requires. In **each agent pane**
 ```bash
 source "$HOME/.agent-letterbox/env.sh"
 
-letterbox zellij run pi -- pi
+letterbox zellij run planner -- <your-agent-cli>
 # other panes:
-letterbox zellij run claude -- claude
-letterbox zellij run grok -- grok
-letterbox zellij run hermes -- hermes
+letterbox zellij run reviewer -- <your-agent-cli>
+letterbox zellij run builder -- <your-agent-cli>
+letterbox zellij run researcher -- <your-agent-cli>
 ```
 
 `zellij run` registers the current `ZELLIJ_PANE_ID` **and** `ZELLIJ_SESSION_NAME` for live doorbells, then starts the command.
@@ -74,7 +74,7 @@ letterbox zellij run hermes -- hermes
 If a pane was rebuilt:
 
 ```bash
-letterbox zellij register pi
+letterbox zellij register planner
 letterbox zellij status
 ```
 
@@ -82,15 +82,15 @@ letterbox zellij status
 
 ```bash
 source "$HOME/.agent-letterbox/env.sh"
-export LETTERBOX_AGENT=pi
+export LETTERBOX_AGENT=planner
 
 printf '%s\n' 'Review src/auth.ts and report correctness findings.' |
-  letterbox send claude delegate auth-review --ack --now
+  letterbox send reviewer delegate auth-review --ack --now
 ```
 
-1. Letter lands in Claude’s inbox
-2. Doorbell is injected into Claude’s registered Zellij pane (`write-chars` + `write 13`)
-3. Claude ACKs / works / replies with `letterbox reply`
+1. Letter lands in the reviewer’s inbox
+2. Doorbell is injected into the reviewer’s registered Zellij pane (`write-chars` + `write 13`)
+3. The reviewer ACKs / works / replies with `letterbox reply`
 4. Original letter is archived
 
 > `LETTERBOX_ZELLIJ_SUBMIT=1` (set by `--automatic-doorbells`) injects into a live pane. Use dedicated agent panes only.
@@ -105,6 +105,7 @@ Requires `zellij` on PATH (0.44.x syntax is the authority for this product).
 
 ## Learn more
 
+- [docs/why-letterbox.md](docs/why-letterbox.md) — why durable letters plus generic doorbells beat direct task injection
 - [docs/team-setup.md](docs/team-setup.md) — full Zellij team bootstrap
 - [docs/zellij.md](docs/zellij.md) — adapter details and safety
 - [SPEC.md](SPEC.md) — message format and reply-first semantics
