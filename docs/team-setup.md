@@ -10,7 +10,7 @@ This is the standard Agent Letterbox setup for a live **Zellij** agent team (loc
 chmod +x bin/letterbox adapters/*.sh tests/*.sh
 export PATH="$PWD/bin:$PATH"
 
-letterbox zellij setup --agents pi,claude,grok,hermes --automatic-doorbells
+letterbox zellij setup --agents planner,reviewer,builder,researcher --automatic-doorbells
 source ~/.agent-letterbox/env.sh
 ```
 
@@ -30,11 +30,14 @@ Also links `~/.local/bin/letterbox` and `~/.agents/skills/agent-letterbox`.
 
 ## Launch agents
 
-In each agent’s Zellij pane:
+In each agent’s Zellij pane, launch whatever coding-agent CLI you already run:
 
 ```bash
 source ~/.agent-letterbox/env.sh
-letterbox zellij run pi -- pi
+letterbox zellij run planner -- <your-agent-cli>
+letterbox zellij run reviewer -- <your-agent-cli>
+letterbox zellij run builder -- <your-agent-cli>
+letterbox zellij run researcher -- <your-agent-cli>
 ```
 
 Registration reads `ZELLIJ_PANE_ID` and `ZELLIJ_SESSION_NAME` from the live pane environment.
@@ -50,7 +53,7 @@ agent	pane_id	session_name	registered_at
 Example:
 
 ```text
-pi	0	agents	2026-07-18T12:00:00Z
+planner	0	agents	2026-07-18T12:00:00Z
 ```
 
 The adapter targets `zellij -s <session_name> action write-chars --pane-id …`.

@@ -153,7 +153,7 @@ cmd_zellij_setup() {
       --agents) agents="${2:?missing comma-separated agent list}"; shift;;
       --dir) setup_dir="${2:?missing directory}"; shift;;
       --submit|--automatic-doorbells) submit=true;;
-      *) die "usage: letterbox zellij setup --agents pi,claude,grok,hermes [--dir <path>] [--automatic-doorbells]";;
+      *) die "usage: letterbox zellij setup --agents planner,reviewer,builder,researcher [--dir <path>] [--automatic-doorbells]";;
     esac
     shift
   done
