@@ -12,7 +12,7 @@ letter written to inbox
 → agent checks its durable inbox (must still check when submit is off)
 ```
 
-The terminal gets the knock only when submit is on; the inbox always keeps the message. Doorbell delivery is best-effort. The letter on disk is the record.
+The terminal gets a ring only when submit is on; the inbox always keeps the message. Doorbell delivery is best-effort. The letter on disk is the record.
 
 ## Platform difference (critical)
 

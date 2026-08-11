@@ -6,7 +6,7 @@ This is the standard Agent Letterbox setup for a live **Zellij** agent team (loc
 
 ## Platform difference
 
-**Without `LETTERBOX_ZELLIJ_SUBMIT=1`, durable letters are still written to the recipient inbox, but no recipient-side terminal nudge is injected.** The adapter only reports that a live target was found. Enable `--automatic-doorbells` only for dedicated agent panes if you want the knock.
+**Without `LETTERBOX_ZELLIJ_SUBMIT=1`, durable letters are still written to the recipient inbox, but no recipient-side terminal nudge is injected.** The adapter only reports that a live target was found. Enable `--automatic-doorbells` only for dedicated agent panes if you want the terminal to receive a ring.
 
 ## One-time setup
 

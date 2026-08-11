@@ -16,7 +16,7 @@ A Letterbox message is the durable work item. A doorbell is only the fast signal
 📬 letterbox doorbell: check your inbox
 ```
 
-When this appears in your live terminal, check the inbox now. **If you never see a doorbell, still check the inbox** — durable mail does not require a knock.
+When this appears in your live terminal, check the inbox now. **If you never see a doorbell, still check the inbox** — durable mail does not require a ring.
 
 ## Startup and resume
 
