@@ -6,6 +6,8 @@
 
 **Agent Letterbox for Zellij turns separate coding-agent terminals into a live team inside [Zellij](https://zellij.dev).**
 
+Cross-agent communication and agent-to-agent coordination for multi-agent AI coding teams. Task handoffs are durable letters on disk; the terminal ring is opt-in and best-effort.
+
 ## What it is
 
 Agent Letterbox is not a model, a new terminal, or a second agent harness. It is the coordination layer that lets the agents you already run hand work to one another without making you the human message relay.
@@ -23,6 +25,17 @@ The agent wakes, picks up the real task from disk, replies, and keeps the work f
 ### Platform difference (read this)
 
 **Without `LETTERBOX_ZELLIJ_SUBMIT=1`, a durable letter is still delivered to the recipient's inbox, but no recipient-side terminal ring occurs.** The adapter only reports that a live target was found. Agents must still check their inbox at startup, after tasks, and at checkpoints. Enable `--automatic-doorbells` (or export `LETTERBOX_ZELLIJ_SUBMIT=1`) only on dedicated agent panes if you want the terminal to receive a ring.
+
+## The Agent Letterbox family
+
+One product per terminal — the same letters, the same protocol, and the same core test suite, plus the tests each terminal needs. Pick the one matching the terminal you already run:
+
+- **[cmux](https://github.com/SimonMallas/agent-letterbox-cmux)** — primary entry point
+- [tmux](https://github.com/SimonMallas/agent-letterbox-tmux)
+- [Herdr](https://github.com/SimonMallas/agent-letterbox-herdr)
+- [Zellij](https://github.com/SimonMallas/agent-letterbox-zellij) — terminal ring requires `LETTERBOX_ZELLIJ_SUBMIT=1`
+
+You are reading the **Zellij** edition.
 
 ## Why it exists
 
