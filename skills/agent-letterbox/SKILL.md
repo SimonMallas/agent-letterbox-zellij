@@ -26,13 +26,14 @@ When this appears in your live terminal, check the inbox now. **If you never see
    letterbox zellij register <your-agent-id>
    ```
 
-2. Check your inbox:
+2. Check your inbox (summary only — bodies via `letterbox read`):
 
    ```bash
    letterbox check
+   letterbox read <id-or-display-id-or-token>
    ```
 
-   Task letters show `[UNACKED]` or `[ACCEPTED]`. Sidecar files are not extra mail.
+   Task letters show `UNACKED` or `ACCEPTED` on summary cards. Sidecar files are not extra mail.
 
 ## Task vs non-task
 
