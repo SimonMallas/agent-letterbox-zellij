@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Public-safe v0.3 core matrix. Neutral identities only. No private integrations.
 # Quality rule (Pi 2026-08-16): expected assertion count + final PASS marker.
-# Zero failures alone can be an early-abort false green under set -e/-u.
+# EXIT trap (Claude/Pi 2026-08-16): early set -e/-u abort must NOT green-wash.
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -10,6 +10,8 @@ PASS=0
 FAIL=0
 BLOCK_FAILED=0
 EXPECTED_PASS=8
+SUITE_DONE=0
+FOOTER_MARK='lifecycle v0.3: PASS'
 
 fail() { echo "FAIL: $*" >&2; FAIL=$((FAIL+1)); BLOCK_FAILED=1; return 0; }
 pass() {
@@ -19,10 +21,22 @@ pass() {
 begin_block() { BLOCK_FAILED=0; }
 
 box=""
-cleanup() { [[ -n "${box:-}" && -d "$box" ]] && rm -rf "$box"; return 0; }
-trap cleanup EXIT
+cleanup_box() { [[ -n "${box:-}" && -d "$box" ]] && rm -rf "$box" || true; box=""; }
+
+# Registered BEFORE first assertion. Any abnormal exit checks completion.
+lifecycle_exit_gate() {
+  local rc=$?
+  cleanup_box
+  if [[ "$SUITE_DONE" == 1 ]]; then
+    return 0
+  fi
+  echo "lifecycle v0.3: FAIL (early abort or incomplete: pass=${PASS:-0} expected=${EXPECTED_PASS} fail=${FAIL:-0}; missing '${FOOTER_MARK}')" >&2
+  # Force non-zero even if the triggering rc was 0 somehow
+  exit 1
+}
+trap lifecycle_exit_gate EXIT
 new_box() {
-  cleanup
+  cleanup_box
   box="$(mktemp -d "${TMPDIR:-/tmp}/lb-v03.XXXXXX")"
   LETTERBOX_DIR="$box" "$letterbox" init planner reviewer builder >/dev/null
 }
@@ -50,6 +64,12 @@ parse2="$(LETTERBOX_DIR="$box" "$letterbox" doorbell-parse "$v02")"
 parse3="$(LETTERBOX_DIR="$box" "$letterbox" doorbell-parse "$v02 · not-hex!!" || true)"
 printf '%s\n' "$parse3" | grep -Fq reject || fail D-reject-malformed
 pass doorbell-grammar
+
+# Mutation hook: LETTERBOX_MUTATE_EARLY_ABORT=1 exits after first completed assertion.
+if [[ "${LETTERBOX_MUTATE_EARLY_ABORT:-0}" == 1 ]]; then
+  echo "MUTATION: early abort after first v0.3 assertion" >&2
+  false
+fi
 
 echo "=== v0.3 read / display_id / token ==="
 begin_block
@@ -186,5 +206,6 @@ if [[ "$PASS" != "$EXPECTED_PASS" ]]; then
   echo "lifecycle v0.3: FAIL (pass count $PASS != expected $EXPECTED_PASS — possible early abort)" >&2
   exit 1
 fi
-echo "lifecycle v0.3: PASS"
+echo "$FOOTER_MARK"
+SUITE_DONE=1
 exit 0
