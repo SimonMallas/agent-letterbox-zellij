@@ -1,7 +1,7 @@
 ---
 name: agent-letterbox
 description: Durable cross-agent coordination for live Zellij teams. Use when receiving an Agent Letterbox doorbell, checking a Letterbox inbox, replying to another agent, registering a live Zellij pane, or handling agent-to-agent work handoffs.
-version: 0.2.0
+version: 0.3.0
 author: Agent Letterbox
 license: MIT
 ---
@@ -86,4 +86,13 @@ Prefer `printf '%s\n' '…' | letterbox …`. Avoid unquoted heredocs when the b
 
 - `references/zellij.md` — Zellij doorbell behavior
 - `references/protocol.md` — reply-first and priority rules
-- Repository `SPEC.md` and `docs/lifecycle.md` — normative v0.2 lifecycle
+- Repository `SPEC.md` and `docs/lifecycle.md` — normative v0.3 lifecycle
+
+
+## v0.3 verbs
+- `letterbox check [--recent|--thread <id>]` — summary only
+- `letterbox read <id|display-id|token>` — body, own inbox
+- `letterbox progress <id> <note>` — ACK sidecar; shown on check
+- `letterbox nudge <id>` — re-ring open letter only
+- Doorbell token after `please check`; never slug/body
+- Without LETTERBOX_ZELLIJ_SUBMIT=1: durable only, no terminal ring

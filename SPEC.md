@@ -1,4 +1,4 @@
-# Agent Letterbox Protocol v0.2
+# Agent Letterbox Protocol v0.3
 
 ## Principle
 
@@ -12,6 +12,17 @@ archive      → recipient processed history
 ```
 
 The terminal gets a ring; the inbox keeps the message. Doorbell delivery is best-effort. The letter on disk is the record.
+
+
+## v0.3 operational additions
+
+- **Additive doorbell token** after `please check` (` · <8-lowercase-hex>`). v0.2 token-less lines remain valid.
+- **`nudge`** re-rings an open letter; never creates durable mail; never claims read/turn_started.
+- **`check`** is summary-only (display id, live/stale by last-activity, progress+age). Bodies via **`read`**.
+- **`check --thread <id>`** is read-only fan-out state (silent/acked/result/filed) — not attention.
+- **`progress`** writes one line into the existing `.ack` sidecar; default check must show note+age.
+- **File guard C:** filesystem PATH arguments for inbound `result`/`nack` require `--read`; id/display-id/token may file directly.
+- **Compatibility:** v0.2 lifecycle state machine unchanged. Public products must not embed private Telegram/launchd paths.
 
 ## Layout
 

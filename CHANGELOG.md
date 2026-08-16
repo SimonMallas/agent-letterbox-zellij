@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.3.0
+
+Public-safe Agent Letterbox core upgrade (Zellij product).
+
+### Added
+- Additive doorbell token: complete v0.2 line as byte-prefix, then ` · <8-hex>` after `please check` (never slug/body)
+- `letterbox nudge <id|display-id|token>` re-rings an open letter without creating mail
+- `letterbox read <id|display-id|token>` — exact durable letter; own-inbox only
+- `letterbox progress <id|display-id|token> <note>` — ACK sidecar progress; default `check` shows note + age
+- Operational `letterbox check`: live/stale counts, last-activity age, summary cards (no bodies); `--recent`; `--thread <id>` read-only fan-out
+- `letterbox doorbell-line` / `doorbell-parse` helpers
+- Structural file guard C: PATH form of inbound result/nack requires `--read`; id/token/display_id may file directly
+- Observable ring honesty: submit-off remains durable-only with **no** terminal ring; outcomes never mean read/turn_started
+
+### Compatibility
+- v0.2 lifecycle verbs preserved (`send` / `reply` / `file` / ACK sidecar)
+- Token-less v0.2 doorbell lines still accepted by `doorbell-parse`
+- Zellij registry + `LETTERBOX_ZELLIJ_SUBMIT` semantics unchanged (submit-off = no ring)
+
+### Excluded (not in this product)
+- Private Telegram / launchd / Kimi integrations
+- Auto-register, machine seen/read receipts, dispatcher
+
+
+
 All notable changes to Agent Letterbox for Zellij are documented here.
 
 ## [0.2.0] — 2026-08-11
