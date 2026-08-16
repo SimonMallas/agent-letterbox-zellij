@@ -3,77 +3,87 @@
 # Separate from personal-data privacy tests. Baseline identical across
 # agent-letterbox-{cmux,tmux,herdr,zellij} public v0.3 ports.
 #
-# Fails make test with offending file:line for internal/private porting residue.
+# Scans EVERY tracked file via `git ls-files -z` (hidden dirs, .github/
+# workflows, root dotfiles included). Non-git fallback walks the tree
+# including hidden paths. Fails with actual file:line for each hit.
+#
+# Forbidden baseline (do not weaken per-port):
+#   shared-brain | bus doorbell | BUS_AGENT | BUS_DIR | telegram | launchd | kimik357 | utc_now
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
-self_name="$(basename "$0")"
+self="tests/$(basename "$0")"
 
-# Paths scanned (product surface only). This script is excluded from hits.
-paths=(
-  bin
-  adapters
-  docs
-  Makefile
-  SPEC.md
-  README.md
-  skills
-)
-for opt in CHANGELOG.md ROADMAP.md SECURITY.md CONTRIBUTING.md VERSION; do
-  [[ -e "$opt" ]] && paths+=("$opt")
-done
-# tests/ except this gate file (patterns live here by necessity)
-shopt -s nullglob
-for t in tests/*; do
-  base="$(basename "$t")"
-  [[ "$base" == "$self_name" ]] && continue
-  paths+=("$t")
-done
-shopt -u nullglob
+# Patterns built from parts so this file is not a self-hit if ever scanned.
+pat_shared_brain="shared""-brain"
+pat_bus_doorbell="bus ""doorbell"
+pat_bus_agent="BUS_""AGENT"
+pat_bus_dir="BUS_""DIR"
+pat_telegram="tele""gram"
+pat_launchd="launch""d"
+pat_kimik="kimik""357"
+pat_utc_now="utc_""now"
 
-# Forbidden tokens (fixed baseline — do not weaken per-port).
-# Built from parts so this file is not a self-hit if ever scanned.
-patterns=(
-  "shared""-brain"
-  "bus ""doorbell"
-  "BUS_""AGENT"
-  "BUS_""DIR"
-  "tele""gram"
-  "launch""d"
-  "kimik""357"
-  "utc_""now"
-)
-
-search() {
-  local pat="$1"
-  shift
-  if command -v rg >/dev/null 2>&1; then
-    rg -FnI -- "$pat" "$@" 2>/dev/null || true
-  else
-    grep -RFnI -- "$pat" "$@" 2>/dev/null || true
-  fi
-}
+# Extended regex alternation for a single pass (case-sensitive baseline as specified).
+PATTERN="${pat_shared_brain}|${pat_bus_doorbell}|${pat_bus_agent}|${pat_bus_dir}|${pat_telegram}|${pat_launchd}|${pat_kimik}|${pat_utc_now}"
 
 fails=0
-echo "private-vocabulary sweep: scanning product paths..."
 
-for pat in "${patterns[@]}"; do
-  while IFS= read -r line; do
-    [[ -z "$line" ]] && continue
-    # Skip this gate file if it appears
-    case "$line" in
-      *"/tests/$self_name:"*|"tests/$self_name:"*) continue;;
-    esac
-    echo "FAIL: private vocabulary '$pat' at $line" >&2
-    fails=$((fails+1))
-  done < <(search "$pat" "${paths[@]}")
-done
+scan_tracked() {
+  # Every tracked file, including hidden and .github/. Null-delimited for safety.
+  # Exclude only this gate script (patterns live here by necessity).
+  local tmp f
+  tmp="$(mktemp)"
+  while IFS= read -r -d '' f; do
+    [[ "$f" == "$self" ]] && continue
+    [[ -f "$f" ]] || continue
+    # -n line number, -I skip binary, -H always show filename, -E extended regex.
+    # Do NOT use rg -I in a way that drops filenames.
+    grep -nIHE -E -- "$PATTERN" "$f" 2>/dev/null || true
+  done < <(git ls-files -z) >"$tmp"
+  cat "$tmp"
+  rm -f "$tmp"
+}
 
-if (( fails > 0 )); then
-  printf 'private-vocabulary: FAIL (%d hit(s))\n' "$fails" >&2
-  exit 1
+scan_fallback() {
+  # Non-git fallback: walk tree including hidden files/dirs; skip .git and this script.
+  local tmp f
+  tmp="$(mktemp)"
+  if command -v rg >/dev/null 2>&1; then
+    # -n line numbers, -H filenames, --hidden includes dotfiles.
+    rg -nH --hidden --no-messages --glob '!.git/**' --glob "!$self" \
+      -e "$pat_shared_brain" -e "$pat_bus_doorbell" \
+      -e "$pat_bus_agent" -e "$pat_bus_dir" -e "$pat_telegram" -e "$pat_launchd" \
+      -e "$pat_kimik" -e "$pat_utc_now" . 2>/dev/null >"$tmp" || true
+  else
+    while IFS= read -r -d '' f; do
+      f="${f#./}"
+      [[ "$f" == "$self" ]] && continue
+      grep -nIHE -E -- "$PATTERN" "$f" 2>/dev/null || true
+    done < <(find . -name .git -prune -o -type f -print0 2>/dev/null) >"$tmp"
+  fi
+  cat "$tmp"
+  rm -f "$tmp"
+}
+
+echo "private-vocabulary sweep: scanning every tracked file (git ls-files -z)..."
+
+if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  out="$(scan_tracked)"
+else
+  echo "private-vocabulary: git unavailable — fallback walk (includes hidden)" >&2
+  out="$(scan_fallback)"
 fi
 
-echo "private-vocabulary: PASS (no forbidden tokens in product paths)"
+if [[ -n "$out" ]]; then
+  printf 'FAIL [private-vocabulary] residue found (file:line):\n%s\n' "$out" >&2
+  fails=$((fails + 1))
+fi
+
+if (( fails > 0 )); then
+  printf 'private-vocabulary: FAIL (%d pattern group(s) hit)\n' "$fails" >&2
+  exit 1
+fi
+printf 'private-vocabulary: PASS\n'
 exit 0
