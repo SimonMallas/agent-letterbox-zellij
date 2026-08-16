@@ -180,7 +180,8 @@ Prefer `printf … | letterbox …` (or another explicit stdin write) over shell
 A doorbell is optional. Its only terminal content should be a generic prompt such as:
 
 ```text
-📬 letterbox doorbell: check your inbox
+📬 letterbox doorbell: unacked <type> in <letterbox>/<agent>/inbox/ — please check
+📬 letterbox doorbell: unacked <type> in <letterbox>/<agent>/inbox/ — please check · <8-lowercase-hex>
 ```
 
 Rules:
