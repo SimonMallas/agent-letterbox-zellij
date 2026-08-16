@@ -1,6 +1,11 @@
 # Changelog
 
-## 0.3.0
+## [0.3.1] — 2026-08-16
+
+- Correct v0.3 release metadata and roadmap wording.
+- Complete public v0.3 lifecycle, privacy, resolver, and release-gate parity.
+
+## [0.3.0] — 2026-08-16
 
 Public-safe Agent Letterbox core upgrade (Zellij product).
 
