@@ -1,53 +1,27 @@
-## Shipped
-
-- **0.3.0** — addressable doorbells, nudge, summary check/read/progress/thread, file guard C (public-safe core).
-
 # Agent Letterbox for Zellij roadmap
 
-## v0.2 scope (local)
+## Shipped in v0.3.0
 
-Agent Letterbox for Zellij is a filesystem-first coordination system for live local Zellij terminal-agent teams.
+Agent Letterbox for Zellij is a filesystem-first coordination layer for live local Zellij coding teams.
 
-Public v0.2 is a **correctness** release: task vs non-task lifecycle, non-terminal ACK with `.md.ack` sidecars, terminal NACK/RESULT, `file` for non-task disposal, publish-before-close ordering, and doorbell-after-local-state when submit is enabled.
+- Durable letters with explicit ACK, RESULT, NACK, and filing lifecycle.
+- One-shot RESULT/NACK for requests that explicitly opt out of ACK.
+- Safe reference handling: full ID, display ID, or unique opaque doorbell token.
+- Operational inbox view: live work first, stale work last, progress age, `--recent`, `read`, and read-only threads.
+- Additive v0.2-compatible doorbell token and safe `nudge` for existing open letters.
+- Zellij submit-off remains honest: durable mail arrives, but no recipient terminal ring occurs until submission is explicitly enabled.
+- Public privacy, vocabulary, mutation, and early-abort test gates.
 
-**Supported:**
+## Next
 
-- Durable Markdown letters in per-agent inboxes.
-- Task vs non-task handling (`requires_ack`).
-- Non-terminal `ack` (accepted WIP + sidecar); terminal `nack` / `result`.
-- `letterbox file` for non-task letters.
-- Reply-first publication and recipient-owned archival.
-- Atomic message publication, advisory locks, lifecycle locks, and filesystem completion proof.
-- `letterbox zellij setup` / `run` / `register` bootstrap with live pane **and** session registry.
-- Optional opt-in Zellij pane input doorbells (`LETTERBOX_ZELLIJ_SUBMIT=1` via `write-chars` + Enter byte 13).
-- **Without submit: durable delivery only — no recipient-side terminal nudge.**
-- Static pane/session pattern fallback after live registry.
-- Local Zellij only (Zellij 0.44+ syntax).
-- User-controlled Zellij layouts: tabs and panes.
+- Observe real v0.3 use before adding more helper surface.
+- Consider a full outbox/open-bets view only after an explicit trust-model review.
+- Consider intentional group send only if real team usage justifies it.
+- Improve operator diagnostics without turning Letterbox into a dispatcher or task board.
 
-**Not supported (deferred / non-goals):**
+## Deferred / out of scope
 
-Carried forward:
-
-- SSH/remote Zellij session packaging.
-- Plugins marketplace distribution as a dependency.
-- cmux/tmux/Herdr/desktop/webhook adapters in this tree (sibling products).
-- Autonomous desktop-agent turns.
-- Persistent watchers, relay/proxy services, or required background daemons.
-- Multi-machine file transport or networked doorbells.
-- A notification-toast path when submit is off (unlike some sibling adapters, Zellij reports live target only).
-
-New explicit deferrals for v0.2:
-
-- Automatic backlog drain tools that bulk-file inboxes.
-- `check --deep` reconciliation of letters that older helpers wrongly archived after ACK.
-- A frontmatter protocol-version field (v0.2 keeps the on-disk format unchanged).
-- Built-in chat bridges.
-- Session `resume-log` as a public CLI surface.
-- A permanent postmaster role or central dispatcher.
-
-## Next milestones
-
-1. Dogfood with multi-agent Zellij layouts.
-2. Soak the published artifact (curl + git install paths, one real ack→result cycle) with and without submit.
-3. Keep lifecycle semantics aligned with sibling products without coupling releases.
+- Customer messaging apps remain native and independent of Letterbox.
+- Any external messaging or external-knock transport requires a separate, app-neutral charter.
+- Auto-registration, machine read receipts, automatic reassignment, and guaranteed wake claims remain out of scope.
+- Cross-host transport, message signing, and external agent-runtime adapters require separate evidence-led work.
