@@ -32,4 +32,7 @@ test:
 	./tests/zellij-doorbell-safety.sh
 	./tests/test_zellij_bootstrap.sh
 
+	./tests/test_doorbell_docs_drift.sh
+	./tests/test_doorbell_docs_drift_mutation.sh
+
 ci: test
