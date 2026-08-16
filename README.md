@@ -8,6 +8,11 @@
 
 Cross-agent communication and agent-to-agent coordination for multi-agent AI coding teams. Task handoffs are durable letters on disk; the terminal ring is opt-in and best-effort.
 
+
+## v0.3 at a glance
+
+Durable letters remain the record. v0.3 adds addressable doorbells (` · <8-hex>` after `please check`), `nudge`, summary `check` + `read`, optional ACK `progress`, and read-only `check --thread`. Without `LETTERBOX_ZELLIJ_SUBMIT=1`, mail lands with **no** terminal ring.
+
 ## What it is
 
 Agent Letterbox is not a model, a new terminal, or a second agent harness. It is the coordination layer that lets the agents you already run hand work to one another without making you the human message relay.
@@ -54,7 +59,7 @@ Read the full comparison in [Why Letterbox?](docs/why-letterbox.md).
 
 ## How a task moves
 
-Public v0.2 is a **correctness** release: acknowledgements no longer file work away.
+Public v0.3 is a **correctness** release: acknowledgements no longer file work away.
 
 ```text
 send task (requires_ack=true)
@@ -175,7 +180,7 @@ Only `nack` or final `result` moves the original letter to `processed/`.
 
 ## Using a pre-release checkout
 
-If you installed an earlier checkout from `main`, reinstall from the current branch and use the lifecycle commands above. v0.2 adds an optional `thread` field to ownership replies; existing letters remain valid. Early scripts that send `ack`, `nack`, or `result` directly must use `letterbox reply` instead, and delegates must include `--ack`. All agents in one team should run the same v0.2 helper.
+If you installed an earlier checkout from `main`, reinstall from the current branch and use the lifecycle commands above. v0.3 keeps the optional additive `thread` field on ownership replies; existing letters remain valid. Early scripts that send `ack`, `nack`, or `result` directly must use `letterbox reply` instead, and delegates must include `--ack`. All agents in one team should run the same v0.3 helper.
 
 ## Test
 
@@ -191,7 +196,7 @@ Requires `zellij` on PATH (0.44.x syntax is the authority for this product).
 - [docs/why-letterbox.md](docs/why-letterbox.md) — why durable letters plus generic doorbells beat direct task injection
 - [docs/team-setup.md](docs/team-setup.md) — full Zellij team bootstrap
 - [docs/zellij.md](docs/zellij.md) — adapter details, registry/session, SUBMIT behaviour, recovery
-- [SPEC.md](SPEC.md) — normative protocol (v0.2)
+- [SPEC.md](SPEC.md) — normative protocol (v0.3)
 - [SECURITY.md](SECURITY.md) — threat model
 - [ROADMAP.md](ROADMAP.md) — scope and deferred items
 - [CHANGELOG.md](CHANGELOG.md) — user-visible changes

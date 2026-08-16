@@ -180,15 +180,17 @@ printf 'accepted\n' | lb reviewer reply "$task_id" ack reply-slug >/dev/null
 if printf 'changed\n' | lb reviewer reply "$task_id" ack reply-slug 2>/dev/null; then fail D4; fi
 pass D4-collision-dies
 
-# G1 G2 G3 check
+# G1 G2 G3 check (v0.3 summary format)
 begin_block
 new_box; send_task
 out="$(lb reviewer check reviewer)"
-printf '%s\n' "$out" | grep -Fq '[UNACKED]' || fail G2-unacked
-printf '%s\n' "$out" | grep -Eq 'inbox: 1 message' || fail G1-count
+printf '%s\n' "$out" | grep -Eq 'UNACKED' || fail G2-unacked
+printf '%s\n' "$out" | grep -Eq 'open: 1 live' || fail G1-count
+# summary must not dump body
+printf '%s\n' "$out" | grep -Fq 'task body' && fail G1-body-leak || true
 printf 'accepted\n' | lb reviewer reply "$task_id" ack reply-slug >/dev/null
 out="$(lb reviewer check reviewer)"
-printf '%s\n' "$out" | grep -Fq '[ACCEPTED]' || fail G2-accepted
+printf '%s\n' "$out" | grep -Eq 'ACCEPTED' || fail G2-accepted
 printf 'orphan\n' > "$box/reviewer/inbox/ghost.md.ack"
 err="$( { lb reviewer check reviewer >/dev/null; } 2>&1 || true)"
 printf '%s\n' "$err" | grep -Fq 'orphan ACK sidecar' || fail G3-warn

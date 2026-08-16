@@ -1,6 +1,6 @@
-# Letter lifecycle (v0.2)
+# Letter lifecycle (v0.3)
 
-One page for the four verbs that change a letter's state.
+One page for the verbs that change a letter's state, plus operational views.
 
 ## Mental model
 
@@ -9,96 +9,64 @@ One page for the four verbs that change a letter's state.
         ↓
  recipient inbox (needs attention)
         ↓
-   read + classify
+   check (summary) → read <display-id> if body needed
         ↙              ↘
    TASK letter          NON-TASK letter
    requires_ack=true    requires_ack=false
         ↓                      ↓
  non-terminal ACK            file
  (stays in inbox)              ↓
-        ↓                  processed/
+ optional progress         processed/
+        ↓
  terminal NACK / RESULT
         ↓
    processed/
 ```
 
 Doorbell (optional) = wake-up only. Inbox file = source of truth.
+Ring success never means the agent read or started a turn.
+
+## Doorbell (additive v0.3)
+
+v0.2 (still valid):
+```text
+📬 letterbox doorbell: unacked <type> in <letterbox>/<agent>/inbox/ — please check
+```
+
+v0.3 emit (token after `please check`):
+```text
+📬 letterbox doorbell: unacked <type> in <letterbox>/<agent>/inbox/ — please check · <8-hex>
+```
+
+- Token is opaque (letter id tail) — never slug/body/path/secret
+- `letterbox nudge <id>` re-rings an existing open letter (no new mail)
+- Exact full-line equality is a cutover hazard — match prefix + optional token
 
 ## Verbs
 
-| Verb | When | Effect on original letter |
+| Verb | When | Effect |
 |---|---|---|
-| `letterbox reply <id> ack` | Accept a task | Publish ack to sender; write `.md.ack`; **leave letter in inbox** |
-| `letterbox reply <id> nack` | Decline a task | Publish nack; move letter to `processed/`; clear sidecar |
-| `letterbox reply <id> result` | Finish a task | Publish result; move letter to `processed/`; clear sidecar |
-| `letterbox file <id>` | Non-task only | Move letter to `processed/`; no reply |
+| `reply <id> ack` | Accept a task | Publish ack; write `.md.ack`; **leave letter in inbox** |
+| `reply <id> nack` | Decline | Publish nack; move to `processed/` |
+| `reply <id> result` | Finish | Publish result; move to `processed/` |
+| `file <id\|path>` | Non-task | Move to `processed/`; PATH result/nack needs `--read` |
+| `progress <id> <note>` | After ACK | Overwrite progress on `.ack`; shown on `check` with age |
+| `read <id\|display-id\|token>` | Need body | Print exact inbox letter (own inbox only) |
+| `nudge <id>` | Re-wake | Ring only; no new letter; open letters only |
+| `check [--recent\|--thread]` | Glance | Summary only — no bodies |
 
-`letterbox check` is read-only. It labels task letters `[UNACKED]` or `[ACCEPTED]` and never counts `.md.ack` files as mail.
+## Short path
 
-## Happy path
+`request` letters may be sent without `--ack` (non-task style) and filed, or tasks may go straight to terminal `result`/`nack` without a prior ACK when the helper allows it. Prefer ACK for multi-turn work.
 
-```bash
-# planner → reviewer (task)
-printf '%s\n' 'GOAL: Review src/auth.ts
-DONE-WHEN: Write findings to stdout.' |
-  LETTERBOX_AGENT=planner letterbox send reviewer delegate auth-review --ack --now
+## Zellij submit-off truth
 
-# reviewer accepts (WIP)
-printf '%s\n' 'ACK: starting review.' |
-  LETTERBOX_AGENT=reviewer letterbox reply <id> ack auth-review --now
-
-# optional progress (does not close the task)
-printf '%s\n' 'Still reading tests.' |
-  LETTERBOX_AGENT=reviewer letterbox send planner info auth-review-progress --re <id>
-
-# reviewer finishes (terminal)
-printf '%s\n' 'RESULT: one high finding; details in body.' |
-  LETTERBOX_AGENT=reviewer letterbox reply <id> result auth-review --now
-```
-
-## NACK path
-
-```bash
-printf '%s\n' 'NACK: out of scope for this agent.' |
-  LETTERBOX_AGENT=reviewer letterbox reply <id> nack auth-review --now
-```
-
-## Non-task path
-
-```bash
-printf '%s\n' 'Deploy window is 18:00 UTC.' |
-  LETTERBOX_AGENT=planner letterbox send builder info deploy-window
-
-LETTERBOX_AGENT=builder letterbox file <id>
-```
+Without `LETTERBOX_ZELLIJ_SUBMIT=1`, durable mail still lands and **no** recipient terminal ring is injected. Unlike tmux status-line or Herdr toast, Zellij has no alternate visibility path when submit is off.
 
 ## Guard rails
 
-- `file` refuses `requires_ack: true` — send terminal `nack`/`result` instead.
-- Legacy `done --reply` refuses a letter that already has `.md.ack` — use `reply … result|nack`.
-- Do not put GOAL/DONE-WHEN in doorbell text.
-- Do not archive after ACK only.
-- Do not embed a new task inside a `result`; send a new letter.
-
-## Stdin bodies (heredoc safety)
-
-The helper reads the **body only** from stdin and writes frontmatter itself.
-
-```bash
-# Preferred — literal body, no shell expansion surprises
-printf '%s\n' 'ACK: I will take this.' | letterbox reply <id> ack my-slug
-
-# Also fine when you need multiple lines without expansion
-printf '%s\n' 'RESULT: done.' 'evidence: tests/green' | letterbox reply <id> result my-slug
-```
-
-Avoid unquoted heredocs (`<<EOF`) for bodies that may contain `$var`, `$(…)`, or backticks. Those expand in the shell before Letterbox runs. If you use a heredoc, quote the delimiter (`<<'EOF'`).
-
-## Crash safety
-
-Publish happens before local archive. If a process dies mid-close:
-
-- a published reply may already exist — safe to retry the same terminal reply;
-- an open task may still sit in `inbox/` until a terminal close succeeds.
-
-Duplicates are preferred over silent loss. Deduplicate by `id` / `re`.
+- `file` refuses `requires_ack: true`
+- PATH form of inbound `result`/`nack` requires `--read` (structural guard C)
+- Legacy `done --reply` refuses stamped ACK work — use `reply … result|nack`
+- No GOAL/DONE-WHEN in doorbell text
+- No archive after ACK only

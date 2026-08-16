@@ -1,3 +1,7 @@
+## Shipped
+
+- **0.3.0** — addressable doorbells, nudge, summary check/read/progress/thread, file guard C (public-safe core).
+
 # Agent Letterbox for Zellij roadmap
 
 ## v0.2 scope (local)
