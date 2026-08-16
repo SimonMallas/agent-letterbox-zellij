@@ -100,6 +100,13 @@ ack_file="$(find "$box/planner/inbox" -name '*--reviewer--ack.md' -type f -print
 grep -Fq "re: $task_id" "$ack_file" || fail B1-re
 pass B1-ack-stamp-wip
 
+# Mutation hook (test-only): fires right after the first completed assertion.
+case "${LETTERBOX_MUTATE_EARLY_ABORT:-}" in
+  exit0) echo "MUTATION: early exit 0 after first v0.2 assertion" >&2; exit 0;;
+  abort) echo "MUTATION: set -e abort after first v0.2 assertion" >&2; false;;
+esac
+
+
 # B2 terminal result + direct
 begin_block
 printf 'finished\n' | lb reviewer reply "$task_id" result reply-slug >/dev/null
