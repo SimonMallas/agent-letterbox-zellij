@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # Public-safe v0.3 core matrix. Neutral identities only. No private integrations.
+# Quality rule (Pi 2026-08-16): expected assertion count + final PASS marker.
+# Zero failures alone can be an early-abort false green under set -e/-u.
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -7,6 +9,7 @@ letterbox="$root/bin/letterbox"
 PASS=0
 FAIL=0
 BLOCK_FAILED=0
+EXPECTED_PASS=8
 
 fail() { echo "FAIL: $*" >&2; FAIL=$((FAIL+1)); BLOCK_FAILED=1; return 0; }
 pass() {
@@ -174,5 +177,14 @@ printf '%s\n' "$line" | grep -Fq 'm1' && fail M-slug || true
 pass mutations
 
 echo
-echo "lifecycle v0.3: $PASS passed, $FAIL failed"
-[[ "$FAIL" == 0 ]]
+echo "lifecycle v0.3: $PASS passed, $FAIL failed (expected $EXPECTED_PASS passes)"
+if [[ "$FAIL" != 0 ]]; then
+  echo "lifecycle v0.3: FAIL (failures=$FAIL)" >&2
+  exit 1
+fi
+if [[ "$PASS" != "$EXPECTED_PASS" ]]; then
+  echo "lifecycle v0.3: FAIL (pass count $PASS != expected $EXPECTED_PASS — possible early abort)" >&2
+  exit 1
+fi
+echo "lifecycle v0.3: PASS"
+exit 0
