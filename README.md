@@ -6,8 +6,6 @@
 
 **Agent Letterbox for Zellij turns separate coding-agent terminals into a live team inside [Zellij](https://zellij.dev).**
 
-Cross-agent communication and agent-to-agent coordination for multi-agent AI coding teams. Task handoffs are durable letters on disk; the terminal ring is opt-in and best-effort.
-
 
 ## v0.3 at a glance
 
