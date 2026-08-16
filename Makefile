@@ -24,7 +24,11 @@ test:
 	./tests/test_release_text.sh
 	$(call run_lifecycle,tests/test_lifecycle_v02.sh,lifecycle v0.2: PASS)
 	$(call run_lifecycle,tests/test_lifecycle_v03.sh,lifecycle v0.3: PASS)
-	./tests/test_lifecycle_v03_early_abort_mutation.sh
+	./tests/test_lifecycle_early_abort_mutation.sh
+	./tests/test_resolver_v03.sh
+	./tests/test_doorbell_v03.sh
+	./tests/test_check_v03.sh
+	./tests/test_confirm_v03.sh
 	./tests/zellij-doorbell-safety.sh
 	./tests/test_zellij_bootstrap.sh
 

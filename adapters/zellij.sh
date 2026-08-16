@@ -18,7 +18,10 @@ set -euo pipefail
 
 to="${1:?recipient}"
 type="${2:?type}"
-id_or_slug="${3:?id-or-slug}"
+# Herdr-compatible argv: $3=slug (opaque/unused for line), $4=token when present.
+# Legacy 3-arg form still accepted: $3=id_or_slug, token derived.
+id_or_slug="${3:-}"
+token_arg="${4:-}"
 
 zellij_bin="${ZELLIJ_BIN_PATH:-zellij}"
 command -v "$zellij_bin" >/dev/null 2>&1 || {
@@ -47,7 +50,11 @@ doorbell_token_for_id() {
 root="${LETTERBOX_DIR:?set LETTERBOX_DIR}"
 prefix="📬 letterbox doorbell: unacked "
 tail=" — please check"
-tok="$(doorbell_token_for_id "$id_or_slug")"
+if [[ "$token_arg" =~ ^[0-9a-f]{8}$ ]]; then
+  tok="$token_arg"
+else
+  tok="$(doorbell_token_for_id "$id_or_slug")"
+fi
 if [[ -n "$tok" ]]; then
   line="${prefix}${type} in ${root}/${to}/inbox/${tail} · ${tok}"
 else
@@ -134,12 +141,15 @@ run_zellij() {
 }
 
 if [[ "${LETTERBOX_ZELLIJ_SUBMIT:-0}" == 1 ]]; then
-  if run_zellij action write-chars --pane-id "$token" "$line" >/dev/null \
-    && run_zellij action write --pane-id "$token" 13 >/dev/null; then
-    printf 'zellij doorbell submitted to %s on %s (session %s)\n' "$to" "$token" "${session:-default}"
-  else
-    printf 'zellij doorbell pasted_not_submitted for %s on %s\n' "$to" "$token" >&2
+  if ! run_zellij action write-chars --pane-id "$token" "$line" >/dev/null; then
+    printf 'zellij doorbell no_live_surface send_failed for %s on %s\n' "$to" "$token"
+    exit 0
   fi
+  if ! run_zellij action write --pane-id "$token" 13 >/dev/null; then
+    printf 'zellij doorbell pasted_not_submitted to %s on %s\n' "$to" "$token"
+    exit 0
+  fi
+  printf 'zellij doorbell submitted to %s on %s (session %s)\n' "$to" "$token" "${session:-default}"
 else
   # Durable mail still lands; without SUBMIT there is no terminal ring.
   printf 'zellij target live for %s on %s; set LETTERBOX_ZELLIJ_SUBMIT=1 to inject the doorbell (submit-off = durable only, no ring)\n' "$to" "$token"
