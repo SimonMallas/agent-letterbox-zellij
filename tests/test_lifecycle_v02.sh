@@ -355,5 +355,14 @@ if printf 'x\n' | lb planner send reviewer delegate badthread --ack --thread 'ba
 pass A1-thread
 
 echo
-echo "lifecycle v0.2: $PASS passed, $FAIL failed"
-[[ "$FAIL" -eq 0 ]]
+echo "lifecycle v0.2: $PASS passed, $FAIL failed (expected 21 passes)"
+if [[ "$FAIL" -ne 0 ]]; then
+  echo "lifecycle v0.2: FAIL (failures=$FAIL)" >&2
+  exit 1
+fi
+if [[ "$PASS" -ne 21 ]]; then
+  echo "lifecycle v0.2: FAIL (pass count $PASS != expected 21 — possible early abort)" >&2
+  exit 1
+fi
+echo "lifecycle v0.2: PASS"
+exit 0
