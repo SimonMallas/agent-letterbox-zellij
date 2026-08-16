@@ -18,7 +18,8 @@ Agent Letterbox is not a model, a new terminal, or a second agent harness. It is
 A task lands as a durable letter in a teammate's inbox. Optionally, when submit is enabled, the doorbell rings in the live pane:
 
 ```text
-📬 letterbox doorbell: check your inbox
+📬 letterbox doorbell: unacked <type> in <letterbox>/<agent>/inbox/ — please check
+📬 letterbox doorbell: unacked <type> in <letterbox>/<agent>/inbox/ — please check · <8-lowercase-hex>
 ```
 
 The agent wakes, picks up the real task from disk, replies, and keeps the work flowing. The terminal gets a ring; the inbox keeps the message.
