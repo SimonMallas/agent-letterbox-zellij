@@ -22,7 +22,7 @@ The terminal gets a ring; the inbox keeps the message. Doorbell delivery is best
 - **`check --thread <id>`** is read-only fan-out state (silent/acked/result/filed) — not attention.
 - **`progress`** writes one line into the existing `.ack` sidecar; default check must show note+age.
 - **File guard C:** filesystem PATH arguments for inbound `result`/`nack` require `--read`; id/display-id/token may file directly.
-- **Compatibility:** v0.2 lifecycle state machine unchanged. Public products must not embed private Telegram/launchd paths.
+- **Compatibility:** v0.2 lifecycle state machine unchanged. Public products must not embed private messaging bridges or host service-manager paths.
 
 ## Layout
 
