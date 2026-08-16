@@ -20,7 +20,7 @@ Public-safe Agent Letterbox core upgrade (Zellij product).
 - Zellij registry + `LETTERBOX_ZELLIJ_SUBMIT` semantics unchanged (submit-off = no ring)
 
 ### Excluded (not in this product)
-- Private Telegram / launchd / Kimi integrations
+- Private messaging bridges, host service-manager units, or single-agent intake adapters
 - Auto-register, machine seen/read receipts, dispatcher
 
 
