@@ -2,7 +2,9 @@
 
 ## Ring the bell. Create the team.
 
-![Agent Letterbox for Zellij](assets/hero/letterbox-hero-1600x900.png)
+![Eight coding agents handing work to each other over Agent Letterbox — panes ring as letters land](assets/hero/letterbox-team.gif)
+
+*Shown: the cmux edition mid-storm — same letters, same protocol. This edition rings Zellij panes.*
 
 **Agent Letterbox for Zellij turns separate coding-agent terminals into a live team inside [Zellij](https://zellij.dev).**
 
@@ -93,6 +95,12 @@ See [SPEC.md](SPEC.md) and [docs/lifecycle.md](docs/lifecycle.md).
 No servers beyond Zellij’s local multiplexer. No SSH/remote transport, plugins marketplace, desktop apps, webhooks, cmux, tmux, or Herdr in this product tree.
 
 ## Install
+
+### Or: add the skill straight to your agent
+
+```bash
+npx skills add SimonMallas/agent-letterbox-zellij
+```
 
 ### Option A — Recommended: copy/paste installer
 
