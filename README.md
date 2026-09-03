@@ -6,13 +6,9 @@
 
 *Shown: the cmux edition mid-storm — same letters, same protocol. This edition rings Zellij panes.*
 
-
 **Letterbox gives an agent team a durable place to build memory together.**
 
-
-
 **Agent Letterbox for Zellij turns separate coding-agent terminals into a live team inside [Zellij](https://zellij.dev).**
-
 
 ## v0.3 at a glance
 
@@ -63,13 +59,11 @@ archive      → recipient processed history
 
 Read the full comparison in [Why Letterbox?](docs/why-letterbox.md).
 
-
 ## More memory than message
 
 Letterbox is a thin shared memory layer for an agent team: durable
 correspondence, handoffs, decisions, ACKs and RESULTs, and recoverable
-history sitting on disk between separate context windows and a shared
-brain. It is the place the team writes what happened — not a model that
+history sitting on disk between separate context windows. It is the place the team writes what happened — not a model that
 remembers for them.
 
 When one agent types into another's terminal, the message is spent the
