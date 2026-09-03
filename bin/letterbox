@@ -33,6 +33,12 @@ need_agent() { [[ "$1" =~ ^[a-z][a-z0-9-]*$ ]] || die "invalid agent name: $1"; 
 inbox_path() { printf '%s/%s/inbox' "$BOX" "$1"; }
 processed_path() { printf '%s/%s/processed' "$BOX" "$1"; }
 canonical_dir() { (cd "$1" && pwd -P); }
+# Outbox is bridge correspondence-in-flight. Never inbound mail.
+refuse_outbox() {
+  if [[ "$(basename "$(dirname "$1")")" == "outbox" ]]; then
+    die "outbox is not inbound mail"
+  fi
+}
 
 frontmatter_value() {
   awk -v wanted="$2" '
@@ -927,6 +933,7 @@ resolve_action_ref() {
   [[ -n "$arg" ]] || return 1
   if [[ "$allow_path" == 1 ]] && message_arg_is_path "$arg"; then
     parent="$(cd "$(dirname "$arg")" && pwd -P)" || return 1
+    refuse_outbox "$parent/$(basename "$arg")"
     printf '%s/%s\n' "$parent" "$(basename "$arg")"
     return 0
   fi
