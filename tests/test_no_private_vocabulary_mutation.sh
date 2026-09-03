@@ -61,6 +61,22 @@ for rel in "docs/visible-residue.md" ".github/workflows/residue-ci.yml" ".hidden
   fi
 done
 
+mkdir -p "$tmp/repo/docs"
+printf 'residue shared''\n''brain here\n' > "$tmp/repo/docs/wrap-residue.md"
+git -C "$tmp/repo" add -f docs/wrap-residue.md 2>/dev/null || true
+wrap="$(cd "$tmp/repo" && "./tests/$gate_name" 2>&1)" && wrap_rc=0 || wrap_rc=$?
+if [[ "$wrap_rc" -eq 0 ]]; then
+  echo "FAIL: gate passed with wrapped private phrase" >&2
+  fails=$((fails+1))
+elif [[ "$wrap" != *"docs/wrap-residue.md:"* ]]; then
+  echo "FAIL: wrap hit missing file:line" >&2
+  fails=$((fails+1))
+else
+  echo "PASS: gate failed on wrapped phrase"
+fi
+git -C "$tmp/repo" rm -q --cached docs/wrap-residue.md 2>/dev/null || true
+rm -f "$tmp/repo/docs/wrap-residue.md"
+
 # file:line evidence on a representative visible-residue case
 mkdir -p "$tmp/repo/docs"
 printf 'residue tele''gram here\n' > "$tmp/repo/docs/visible-residue.md"
@@ -85,37 +101,3 @@ if [[ "$fails" -ne 0 ]]; then
 fi
 echo "vocabulary-gate mutation: PASS"
 exit 0
-EOF
-chmod +x /tmp/letterbox-zellij-v030-core-hermes-76760/tests/test_no_private_vocabulary_mutation.sh
-
-# Ensure Makefile wires it (should already)
-grep -q test_no_private_vocabulary_mutation /tmp/letterbox-zellij-v030-core-hermes-76760/Makefile || \
-  echo "WARNING: mutation not in Makefile"
-
-# Clean any leftover residue staging
-cd /tmp/letterbox-zellij-v030-core-hermes-76760
-git rm -f --cached docs/visible-residue.md 2>/dev/null || true
-rm -f docs/visible-residue.md
-git checkout -- Makefile 2>/dev/null || true
-
-# Ensure Makefile has mutation wired
-if ! grep -q test_no_private_vocabulary_mutation Makefile; then
-  # re-read and patch
-  python3 <<'PY'
-from pathlib import Path
-p=Path('Makefile')
-t=p.read_text()
-if 'test_no_private_vocabulary_mutation' not in t:
-    t=t.replace(
-        './tests/test_no_private_vocabulary.sh\n',
-        './tests/test_no_private_vocabulary.sh\n\t./tests/test_no_private_vocabulary_mutation.sh\n'
-    )
-    p.write_text(t)
-print(p.read_text())
-PY
-fi
-
-echo '=== Makefile final ==='
-cat Makefile
-echo '=== git status ==='
-git status -sb

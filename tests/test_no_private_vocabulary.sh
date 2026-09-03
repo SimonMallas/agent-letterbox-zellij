@@ -76,6 +76,19 @@ else
   out="$(scan_fallback)"
 fi
 
+wrap=""
+if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  while IFS= read -r -d '' f; do
+    [[ "$f" == "$self" || "$f" == "tests/vocab_normalized.py" ]] && continue
+    [[ -f "$f" ]] || continue
+    wrap+="$(python3 tests/vocab_normalized.py "$f" "shared"" brain" "bus ""doorbell" 2>/dev/null || true)"
+    wrap+=$'\n'
+  done < <(git ls-files -z)
+fi
+if [[ -n "${wrap//[$'\n' ]/}" ]]; then
+  out="${out:+$out$'\n'}$wrap"
+fi
+
 if [[ -n "$out" ]]; then
   printf 'FAIL [private-vocabulary] residue found (file:line):\n%s\n' "$out" >&2
   fails=$((fails + 1))
