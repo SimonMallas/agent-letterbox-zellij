@@ -76,12 +76,25 @@ else
   out="$(scan_fallback)"
 fi
 
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "FAIL: python3 required for whitespace-normalised scan" >&2
+  exit 1
+fi
 wrap=""
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   while IFS= read -r -d '' f; do
     [[ "$f" == "$self" || "$f" == "tests/vocab_normalized.py" ]] && continue
     [[ -f "$f" ]] || continue
-    wrap+="$(python3 tests/vocab_normalized.py "$f" "shared"" brain" "bus ""doorbell" 2>/dev/null || true)"
+    set +e
+    hits="$(python3 tests/vocab_normalized.py "$f" "shared"" brain" "bus ""doorbell" 2>&1)"
+    nrc=$?
+    set -e
+    if [[ "$nrc" -ne 0 ]]; then
+      echo "FAIL: whitespace-normaliser error on $f (rc=$nrc): $hits" >&2
+      fails=$((fails + 1))
+      continue
+    fi
+    wrap+="$hits"
     wrap+=$'\n'
   done < <(git ls-files -z)
 fi
