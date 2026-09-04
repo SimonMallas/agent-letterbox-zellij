@@ -18,7 +18,7 @@ Durable letters remain the record. v0.3 adds addressable doorbells (` · <8-hex>
 
 Agent Letterbox is not a model, a new terminal, or a second agent harness. It is the coordination layer that lets the agents you already run hand work to one another without making you the human message relay.
 
-A task lands as a durable letter in a teammate's inbox. Optionally, when submit is enabled, the doorbell rings in the live pane:
+A task lands as a durable letter in a teammate's inbox. The doorbell rings, alerting the agent to check it:
 
 ```text
 📬 letterbox doorbell: unacked <type> in <letterbox>/<agent>/inbox/ — please check
@@ -115,7 +115,7 @@ See [SPEC.md](SPEC.md) and [docs/lifecycle.md](docs/lifecycle.md).
 ## What this opens up
 
 - **Durable coordination** — letters survive offline, restart, and missed knocks.
-- **Optional near-instant wake-up** — with submit enabled, a live Zellij agent can be nudged without human copy/paste.
+- **Near-instant wake-up** — with `LETTERBOX_ZELLIJ_SUBMIT=1`, a live Zellij agent can be nudged without human copy/paste. Without it, the letter is durable and nobody is told.
 - **Real handoffs** — implementation, review, research, QA, and fixes move as explicit owned work.
 - **Clear responsibility** — task letters require ACK/NACK/RESULT; ACK means in progress, not done.
 - **Evidence over claims** — inbox, reply, sidecar, and processed files show what happened even when an agent conversation is gone.

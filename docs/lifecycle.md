@@ -23,7 +23,7 @@ One page for the verbs that change a letter's state, plus operational views.
    processed/
 ```
 
-Doorbell (optional) = wake-up only. Inbox file = source of truth.
+Doorbell = wake-up only. Without a bell, nobody is told. Inbox file = source of truth.
 Ring success never means the agent read or started a turn.
 
 ## Doorbell (additive v0.3)

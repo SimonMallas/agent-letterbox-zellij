@@ -2,7 +2,7 @@
 
 This is the standard Agent Letterbox setup for a live **Zellij** agent team (local only).
 
-**You control Zellij.** Create whatever tabs and panes fit the task. Letterbox never creates your product layout for you during normal use; it registers the pane you launch each agent in, then (optionally) rings that pane when mail arrives.
+**You control Zellij.** Create whatever tabs and panes fit the task. Letterbox never creates your product layout for you during normal use; it registers the pane you launch each agent in, then rings that pane when mail arrives if `LETTERBOX_ZELLIJ_SUBMIT=1`. Without the ring, the letter is durable and nobody is told.
 
 ## Platform difference
 

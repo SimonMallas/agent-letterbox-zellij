@@ -6,7 +6,7 @@ Agent Letterbox deliberately uses a different split:
 
 ```text
 Durable task content → letter on disk
-Live wake-up         → short generic doorbell in the terminal (optional on Zellij)
+Live wake-up         → short generic doorbell in the terminal (the bell is how anyone is told; on Zellij the ring requires LETTERBOX_ZELLIJ_SUBMIT=1)
 ```
 
 ## The direct-injection model
@@ -23,7 +23,7 @@ This is fast, but the terminal becomes both the message transport and the work r
 
 ```text
 write full task to Agent B's inbox
-→ optionally inject: “📬 letterbox doorbell: unacked <type> in <letterbox>/<agent>/inbox/ — please check”
+→ inject: “📬 letterbox doorbell: unacked <type> in <letterbox>/<agent>/inbox/ — please check”
 → Agent B reads the durable letter
 → Agent B ACKs (work stays visible), then RESULTs (archives)
 ```
