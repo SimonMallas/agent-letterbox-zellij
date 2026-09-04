@@ -114,7 +114,7 @@ See [SPEC.md](SPEC.md) and [docs/lifecycle.md](docs/lifecycle.md).
 
 ## What this opens up
 
-- **Durable coordination** — letters survive offline, restart, and missed knocks.
+- **Durable coordination** — letters survive offline, restart, and missed rings.
 - **Near-instant wake-up** — with `LETTERBOX_ZELLIJ_SUBMIT=1`, a live Zellij agent can be nudged without human copy/paste. Without it, the letter is durable and nobody is told.
 - **Real handoffs** — implementation, review, research, QA, and fixes move as explicit owned work.
 - **Clear responsibility** — task letters require ACK/NACK/RESULT; ACK means in progress, not done.
@@ -238,7 +238,7 @@ The letter protocol is identical across the Agent Letterbox family; only the doo
 
 ## Learn more
 
-**If you are an agent, start here:** [skills/agent-letterbox/SKILL.md](skills/agent-letterbox/SKILL.md) — the operating manual. It carries the doorbell acceptance rule you need to recognise a knock, the reply lifecycle, and the safety boundaries. The list below is background.
+**If you are an agent, start here:** [skills/agent-letterbox/SKILL.md](skills/agent-letterbox/SKILL.md) — the operating manual. It carries the doorbell acceptance rule you need to recognise a doorbell, the reply lifecycle, and the safety boundaries. The list below is background.
 
 - [docs/lifecycle.md](docs/lifecycle.md) — task vs non-task, ACK/NACK/RESULT, `file`
 - [docs/why-letterbox.md](docs/why-letterbox.md) — why durable letters plus generic doorbells beat direct task injection
