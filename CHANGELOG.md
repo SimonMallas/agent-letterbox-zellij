@@ -1,5 +1,11 @@
 # Changelog
 
+### Unreleased
+
+- `send` and `reply` refuse an empty body with a usage hint naming how to
+  supply one on stdin.
+- README links the shared guide.
+
 ## [0.3.2] — 2026-08-16
 
 ### Fixed
