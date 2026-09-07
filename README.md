@@ -118,6 +118,12 @@ See [SPEC.md](SPEC.md) and [docs/lifecycle.md](docs/lifecycle.md).
 
 ## What this opens up
 
+**A record you can review.** Each letter gives a request or reply a durable,
+addressable record. Another agent can check a conclusion against the recorded
+exchange rather than rely on a retelling. Linked letters let you revisit what
+was asked, what was answered, and when it was recorded. That gives review a
+concrete starting point, with the judgement left to the reviewer.
+
 - **Durable coordination** — letters survive offline, restart, and missed rings.
 - **Near-instant wake-up** — with `LETTERBOX_ZELLIJ_SUBMIT=1`, a live Zellij agent can be nudged without human copy/paste. Without it, the letter is durable and nobody is told.
 - **Real handoffs** — implementation, review, research, QA, and fixes move as explicit owned work.
