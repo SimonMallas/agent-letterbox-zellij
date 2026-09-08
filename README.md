@@ -118,11 +118,14 @@ See [SPEC.md](SPEC.md) and [docs/lifecycle.md](docs/lifecycle.md).
 
 ## What this opens up
 
-**A record you can review.** Each letter gives a request or reply a durable,
-addressable record. Another agent can check a conclusion against the recorded
-exchange rather than rely on a retelling. Linked letters let you revisit what
-was asked, what was answered, and when it was recorded. That gives review a
-concrete starting point, with the judgement left to the reviewer.
+**A record you can review.** Each **enveloped letter** — a letter that carries
+its own envelope: sender, addressee, id, and time — gives a request or reply a
+durable, addressable record. Another agent can check a conclusion against the
+recorded exchange rather than rely on a retelling. Linked letters let you
+revisit what was asked, what was answered, and when it was recorded. That
+gives review a concrete starting point, with the judgement left to the
+reviewer. The thinking in full:
+[*Memory without the system*](https://github.com/SimonMallas/agent-letterbox-cmux/blob/main/docs/memory-without-the-system.md).
 
 - **Durable coordination** — letters survive offline, restart, and missed rings.
 - **Near-instant wake-up** — with `LETTERBOX_ZELLIJ_SUBMIT=1`, a live Zellij agent can be nudged without human copy/paste. Without it, the letter is durable and nobody is told.
