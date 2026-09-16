@@ -51,11 +51,13 @@ emit_outcome() { # $1=outcome $2=reason $3=target
         "$outcome" "$reason" "$target"
 }
 
-# Bounded call: 124 = timeout (incl. missing python3), 127 = missing binary,
-# else the child's exit code. Same semantics as the bus helper's bounded_cmd.
+# Bounded call: 124 = actual timeout, 125 = runner (python3) unavailable,
+# 127 = missing binary, else the child's exit code. Same semantics as the bus
+# helper's bounded_cmd. Runner presence is verified up front, so a 124 at a
+# classification point is always a genuine timeout — never ambiguous.
 bounded_cmd() { # $1=seconds, rest=argv
     local secs="$1"; shift
-    command -v python3 >/dev/null 2>&1 || return 124
+    command -v python3 >/dev/null 2>&1 || return 125
     python3 -c '
 import os, signal, subprocess, sys
 try:
@@ -76,6 +78,9 @@ except subprocess.TimeoutExpired:
 
 zellij_bin="${ZELLIJ_BIN_PATH:-zellij}"
 command -v "$zellij_bin" >/dev/null 2>&1 || { emit_outcome no_live_surface adapter_unavailable -; exit 0; }
+# Runner presence is verified BEFORE any 124 is read as a timeout: a missing
+# python3 is adapter_unavailable (non-retryable), never helper_timeout.
+command -v python3 >/dev/null 2>&1 || { emit_outcome no_live_surface adapter_unavailable -; exit 0; }
 
 # Token from letter id tail (8 hex) or hash; never slug/body.
 doorbell_token_for_id() {

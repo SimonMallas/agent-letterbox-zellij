@@ -75,6 +75,16 @@ exit 1
 SH
 chmod +x "$ROOT/sleeper.sh" "$ROOT/garbage.sh" "$ROOT/double.sh" "$ROOT/valid-exit1.sh"
 
+# PATH farm WITH the fake zellij but WITHOUT python3: a missing runner must be
+# adapter_unavailable (non-retryable), never helper_timeout.
+mkdir -p "$ROOT/bin-nopython"
+for t in bash grep awk sed shasum od tr date mktemp ln rm cat \
+         dirname basename env sleep; do
+  src="$(command -v "$t" 2>/dev/null || true)"
+  [[ -n "$src" ]] && ln -sf "$src" "$ROOT/bin-nopython/$t"
+done
+ln -sf "$ROOT/bin/zellij" "$ROOT/bin-nopython/zellij"
+
 send_now() { # $1.. = env overrides (must trail base assignments to win)
   env BOX="$BOX" LETTERBOX_AGENT=tester LETTERBOX_DIR="$BOX" \
     LETTERBOX_DOORBELL="$LETTERBOX_DOORBELL" LETTERBOX_ZELLIJ_SUBMIT="$LETTERBOX_ZELLIJ_SUBMIT" \
@@ -155,6 +165,8 @@ check "notify-only (SUBMIT=0)"           "LETTERBOX_ZELLIJ_SUBMIT=0" \
   'doorbell-outcome v=1 outcome=no_live_surface reason=notify_only target=-'
 check "adapter: zellij missing"          "ZELLIJ_BIN_PATH=/nonexistent/zellij" \
   'doorbell-outcome v=1 outcome=no_live_surface reason=adapter_unavailable target=-'
+check "missing python3 → adapter_unavailable (not helper_timeout)" "PATH=$ROOT/bin-nopython" \
+  'doorbell-outcome v=1 outcome=no_live_surface reason=adapter_unavailable target=-'
 check "wrapper: doorbell env unset"      "LETTERBOX_DOORBELL=" \
   'doorbell-outcome v=1 outcome=no_live_surface reason=adapter_unavailable target=-'
 check "wrapper: doorbell not executable" "LETTERBOX_DOORBELL=/etc/hosts" \
@@ -222,4 +234,4 @@ else
 fi
 
 echo "──"
-echo "zellij edition e2e: $pass/21 PASS"
+echo "zellij edition e2e: $pass/22 PASS"
