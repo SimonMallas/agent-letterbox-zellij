@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Zellij doorbell adapter (local automatic live-agent ring).
+# Zellij doorbell adapter — doorbell-outcome v=1 emitter.
+# The letter is already durable; this rings a live pane and reports ONE
+# machine-readable outcome line on stdout (the wrapper owns forwarding).
 #
 # Lookup order:
 #   1) LETTERBOX_ZELLIJ_REGISTRY (default: $LETTERBOX_DIR/zellij-agents.tsv)
@@ -14,7 +16,7 @@
 #
 # Arg 3 is letter id (preferred) for v0.3 additive token. Legacy slug still
 # accepted: token is derived when the arg looks like an id, else omitted.
-set -euo pipefail
+set -uo pipefail
 
 to="${1:?recipient}"
 type="${2:?type}"
@@ -23,11 +25,57 @@ type="${2:?type}"
 id_or_slug="${3:-}"
 token_arg="${4:-}"
 
-zellij_bin="${ZELLIJ_BIN_PATH:-zellij}"
-command -v "$zellij_bin" >/dev/null 2>&1 || {
-  echo 'zellij doorbell deferred: zellij is unavailable' >&2
-  exit 0
+# doorbell-outcome v=1: exactly one line, validated before printing.
+# outcome ∈ {submitted, pasted_not_submitted, no_live_surface}; reason/target
+# cross-checked per the contract (no_live_surface always target=-; submitted
+# and pasted always target=<pinned pane>, reason=- or enter_failed|-).
+emit_outcome() { # $1=outcome $2=reason $3=target
+    local outcome="$1" reason="$2" target="$3"
+    case "$outcome" in
+        submitted)
+            [[ "$reason" == "-" && "$target" != "-" ]] || return 1
+            [[ "$target" =~ ^[A-Za-z0-9._:+-]+$ || "$target" =~ ^%[0-9]+$ ]] || return 1
+            ;;
+        pasted_not_submitted)
+            case "$reason" in enter_failed|-) ;; *) return 1;; esac
+            [[ "$target" != "-" ]] || return 1
+            [[ "$target" =~ ^[A-Za-z0-9._:+-]+$ || "$target" =~ ^%[0-9]+$ ]] || return 1
+            ;;
+        no_live_surface)
+            [[ "$reason" != "-" && "$reason" =~ ^[A-Za-z0-9._:+-]+$ ]] || return 1
+            [[ "$target" == "-" ]] || return 1
+            ;;
+        *) return 1;;
+    esac
+    printf 'doorbell-outcome v=1 outcome=%s reason=%s target=%s\n' \
+        "$outcome" "$reason" "$target"
 }
+
+# Bounded call: 124 = timeout (incl. missing python3), 127 = missing binary,
+# else the child's exit code. Same semantics as the bus helper's bounded_cmd.
+bounded_cmd() { # $1=seconds, rest=argv
+    local secs="$1"; shift
+    command -v python3 >/dev/null 2>&1 || return 124
+    python3 -c '
+import os, signal, subprocess, sys
+try:
+    p = subprocess.Popen(sys.argv[2:], start_new_session=True)
+except FileNotFoundError:
+    sys.exit(127)
+try:
+    sys.exit(p.wait(timeout=float(sys.argv[1])))
+except subprocess.TimeoutExpired:
+    try:
+        os.killpg(p.pid, signal.SIGKILL)
+    except Exception:
+        p.kill()
+    p.wait()
+    sys.exit(124)
+' "$secs" "$@"
+}
+
+zellij_bin="${ZELLIJ_BIN_PATH:-zellij}"
+command -v "$zellij_bin" >/dev/null 2>&1 || { emit_outcome no_live_surface adapter_unavailable -; exit 0; }
 
 # Token from letter id tail (8 hex) or hash; never slug/body.
 doorbell_token_for_id() {
@@ -55,14 +103,20 @@ if [[ "$token_arg" =~ ^[0-9a-f]{8}$ ]]; then
 else
   tok="$(doorbell_token_for_id "$id_or_slug")"
 fi
-if [[ -n "$tok" ]]; then
-  line="${prefix}${type} in ${root}/${to}/inbox/${tail} · ${tok}"
+# Ruling 5 middle insert: name the durable letter's sender, but only when the
+# wrapper supplied a value that passes the safe-identifier regex (re-checked
+# here — env is never trusted). Otherwise the line stays the old shape.
+line_from="${LETTERBOX_DOORBELL_FROM:-}"
+if [[ "$line_from" =~ ^[A-Za-z][A-Za-z0-9._-]{0,31}$ ]]; then
+  line="${prefix}${type} from ${line_from} in ${root}/${to}/inbox/${tail}"
 else
   line="${prefix}${type} in ${root}/${to}/inbox/${tail}"
 fi
+if [[ -n "$tok" ]]; then
+  line="${line} · ${tok}"
+fi
 
-pane_id=''
-session=''
+bound_s="${LETTERBOX_DOORBELL_TIMEOUT:-5}"
 
 pane_token() {
   local id="$1"
@@ -73,20 +127,30 @@ pane_token() {
   fi
 }
 
+# 0 = live, 1 = dead, 124 = lookup timeout (retryable, pre-inject).
 pane_live() {
   local p="$1" sess="${2:-}"
-  local token list
+  local token list list_ec=0
   token="$(pane_token "$p")"
   if [[ -n "$sess" ]]; then
-    list="$("$zellij_bin" -s "$sess" action list-panes 2>/dev/null || true)"
+    list="$(bounded_cmd "$bound_s" "$zellij_bin" -s "$sess" action list-panes 2>/dev/null)" || list_ec=$?
   else
-    list="$("$zellij_bin" action list-panes 2>/dev/null || true)"
+    list="$(bounded_cmd "$bound_s" "$zellij_bin" action list-panes 2>/dev/null)" || list_ec=$?
+  fi
+  if [[ "$list_ec" -eq 124 ]]; then
+    return 124
+  fi
+  if [[ "$list_ec" -ne 0 ]]; then
+    return 1
   fi
   printf '%s\n' "$list" | awk -v t="$token" -v raw="$p" '
     $1 == t || $1 == raw || $1 == ("terminal_" raw) { found = 1 }
     END { exit !found }
   '
 }
+
+pane_id=''
+session=''
 
 # 1) Live registry
 registry_file="${LETTERBOX_ZELLIJ_REGISTRY:-}"
@@ -96,7 +160,13 @@ fi
 if [[ -n "$registry_file" && -r "$registry_file" ]]; then
   while IFS=$'\t' read -r agent pane sess _ts || [[ -n "${agent:-}" ]]; do
     [[ "$agent" == "$to" && -n "${pane:-}" ]] || continue
-    if pane_live "$pane" "${sess:-}"; then
+    live_ec=0
+    pane_live "$pane" "${sess:-}" || live_ec=$?
+    if [[ "$live_ec" -eq 124 ]]; then
+      emit_outcome no_live_surface helper_timeout -
+      exit 0
+    fi
+    if [[ "$live_ec" -eq 0 ]]; then
       pane_id="$pane"
       session="${sess:-}"
       break
@@ -114,7 +184,13 @@ if [[ -z "$pane_id" ]]; then
     while IFS=$'\t' read -r agent pane sess || [[ -n "${agent:-}" ]]; do
       [[ "$agent" == \#* || -z "${agent:-}" ]] && continue
       [[ "$agent" == "$to" && -n "${pane:-}" ]] || continue
-      if pane_live "$pane" "${sess:-}"; then
+      live_ec=0
+      pane_live "$pane" "${sess:-}" || live_ec=$?
+      if [[ "$live_ec" -eq 124 ]]; then
+        emit_outcome no_live_surface helper_timeout -
+        exit 0
+      fi
+      if [[ "$live_ec" -eq 0 ]]; then
         pane_id="$pane"
         session="${sess:-}"
         break
@@ -123,34 +199,45 @@ if [[ -z "$pane_id" ]]; then
   fi
 fi
 
-if [[ -z "$pane_id" ]]; then
-  echo "zellij doorbell deferred: no live zellij pane for $to" >&2
-  # Observable outcome class (not attention):
-  printf 'no_live_surface\n' >&2
-  exit 0
-fi
+[[ -n "$pane_id" ]] || { emit_outcome no_live_surface surface_not_found -; exit 0; }
 
 token="$(pane_token "$pane_id")"
 
+# Bounded inject on the pinned pane token (session-scoped when registered).
 run_zellij() {
   if [[ -n "$session" ]]; then
-    "$zellij_bin" -s "$session" "$@"
+    bounded_cmd "$bound_s" "$zellij_bin" -s "$session" "$@"
   else
-    "$zellij_bin" "$@"
+    bounded_cmd "$bound_s" "$zellij_bin" "$@"
   fi
 }
 
+# Input injection is explicit opt-in: Enter can submit unrelated buffer text.
 if [[ "${LETTERBOX_ZELLIJ_SUBMIT:-0}" == 1 ]]; then
-  if ! run_zellij action write-chars --pane-id "$token" "$line" >/dev/null; then
-    printf 'zellij doorbell no_live_surface send_failed for %s on %s\n' "$to" "$token"
+  send_ec=0
+  run_zellij action write-chars --pane-id "$token" "$line" >/dev/null || send_ec=$?
+  if [[ "$send_ec" -ne 0 ]]; then
+    if [[ "$send_ec" -eq 124 ]]; then
+      # Text step started; bytes may or may not have been injected.
+      emit_outcome no_live_surface unconfirmed -
+    else
+      emit_outcome no_live_surface send_failed -
+    fi
     exit 0
   fi
-  if ! run_zellij action write --pane-id "$token" 13 >/dev/null; then
-    printf 'zellij doorbell pasted_not_submitted to %s on %s\n' "$to" "$token"
+  enter_ec=0
+  run_zellij action write --pane-id "$token" 13 >/dev/null || enter_ec=$?
+  if [[ "$enter_ec" -ne 0 ]]; then
+    if [[ "$enter_ec" -eq 124 ]]; then
+      # Enter may have landed after text was confirmed sent.
+      emit_outcome no_live_surface unconfirmed -
+    else
+      emit_outcome pasted_not_submitted enter_failed "$token"
+    fi
     exit 0
   fi
-  printf 'zellij doorbell submitted to %s on %s (session %s)\n' "$to" "$token" "${session:-default}"
+  emit_outcome submitted - "$token"
 else
   # Durable mail still lands; without SUBMIT there is no terminal ring.
-  printf 'zellij target live for %s on %s; set LETTERBOX_ZELLIJ_SUBMIT=1 to inject the doorbell (submit-off = durable only, no ring)\n' "$to" "$token"
+  emit_outcome no_live_surface notify_only -
 fi
