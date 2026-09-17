@@ -193,6 +193,14 @@ Rules:
 - At-most-once notification over a durable at-least-once record.
 - Offline, busy, or unregistered agents still receive the letter in `inbox/`.
 
+Bounds budget (ring path). `LETTERBOX_DOORBELL_TIMEOUT` (default **1s**) bounds
+each mux call (list-panes, text, Enter). The longest legitimate run is 3 steps
+(list-panes + write-chars + write) = 3 × step. The wrapper's whole-run
+backstop is 4 × step + 5s spawn margin = **9s** at the default, which with ~1s
+of cleanup sits strictly inside the caller's 10s deadline. Configuration
+limit: keep `LETTERBOX_DOORBELL_TIMEOUT` at 1s (integer seconds); raising it
+outruns the caller deadline unless this budget is re-derived.
+
 The Zellij adapter implements this contract for live terminal agents (live pane+session registry first, optional static pane/session patterns as fallback; local Zellij only). Without LETTERBOX_ZELLIJ_SUBMIT=1, a durable letter is still delivered but no recipient-side terminal nudge is injected. The shared filesystem remains the universal transport.
 
 ## Compatibility

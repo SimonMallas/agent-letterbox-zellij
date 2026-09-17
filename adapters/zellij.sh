@@ -51,10 +51,11 @@ emit_outcome() { # $1=outcome $2=reason $3=target
         "$outcome" "$reason" "$target"
 }
 
-# Bounded call: 124 = actual timeout, 125 = runner (python3) unavailable,
-# 127 = missing binary, else the child's exit code. Same semantics as the bus
-# helper's bounded_cmd. Runner presence is verified up front, so a 124 at a
-# classification point is always a genuine timeout — never ambiguous.
+# Bounded call: 124 = actual timeout (runner-killed; the sentinel is
+# runner-owned — a child exiting 124 itself is remapped to 123), 125 = runner
+# (python3) unavailable, 127 = missing binary, else the child's exit code.
+# Runner presence is verified up front, so a 124 at a classification point
+# is always a genuine timeout — never ambiguous.
 bounded_cmd() { # $1=seconds, rest=argv
     local secs="$1"; shift
     command -v python3 >/dev/null 2>&1 || return 125
@@ -65,7 +66,7 @@ try:
 except FileNotFoundError:
     sys.exit(127)
 try:
-    sys.exit(p.wait(timeout=float(sys.argv[1])))
+    rc = p.wait(timeout=float(sys.argv[1]))
 except subprocess.TimeoutExpired:
     try:
         os.killpg(p.pid, signal.SIGKILL)
@@ -73,6 +74,9 @@ except subprocess.TimeoutExpired:
         p.kill()
     p.wait()
     sys.exit(124)
+# The runner owns the 124 sentinel: a child that exits 124 on its own was
+# NOT killed on timeout and must not be read as one — remap to 123.
+sys.exit(123 if rc == 124 else rc)
 ' "$secs" "$@"
 }
 
@@ -121,7 +125,7 @@ if [[ -n "$tok" ]]; then
   line="${line} · ${tok}"
 fi
 
-bound_s="${LETTERBOX_DOORBELL_TIMEOUT:-5}"
+bound_s="${LETTERBOX_DOORBELL_TIMEOUT:-1}"
 
 pane_token() {
   local id="$1"
