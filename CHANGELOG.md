@@ -1,5 +1,37 @@
 # Changelog
 
+## [0.5.0] — unreleased (zellij edition)
+
+- Add read-only `letterbox query`: strict-v1 envelope cards by default and
+  explicit `--compat-v2` JSON with diagnostics and scoped completeness.
+- Query requires Python 3.9+ (standard library only), with an explicit refusal
+  when unavailable. Registration and bounded doorbell behavior is unchanged.
+- New send and reply envelopes include UTC `sent`. A send's id and header share
+  one clock snapshot; stable parent-derived reply ids retain their lineage while
+  `sent` records each reply's own publication time. Identical retries preserve it.
+- Add `send --supersedes <id>` as a syntax-validated reference, without ownership
+  lookup. This option and explicit `--re`/`--thread` refuse malformed or overlong
+  values rather than sanitising them. Existing letters are unchanged.
+- Refuse injected/multiline header values: session labels are bounded, deadlines
+  and publication times are calendar-valid UTC, and generated/derived ids and
+  inherited reply linkage are validated before publication. Invalid session
+  labels are refused before a reply can create a lifecycle lock. Queries never
+  silently repair malformed older envelopes.
+- Bound normalized new-send slugs with room for the recipient's longest reply
+  suffix, reporting the actual per-send maximum on refusal. Writer/reference
+  and both query id limits use the 243-byte temporary-filename budget, retaining
+  support for long v0.4.0 ids that could already be replied to. Add maximum-slug
+  ACK/RESULT and actual v0.4.0-writer synthetic-fixture compatibility controls.
+- Add synthetic query tests to `make ci`, with Python 3.9 and 3.13 on the Ubuntu
+  and macOS workflow matrix. Matrix configuration is not a claim of a passed run.
+- Distinguish symlinked root components from non-directory components. Add
+  separate mutation witnesses for no-follow opens, symlink recognition, and
+  pre/post-open leaf type guards.
+- No archive traversal or archive verb. Transport behavior is unchanged; header
+  validation is not a claim of authenticated metadata, exhaustive writer race
+  hardening, or hardware crash durability.
+  See [query contracts and limitations](docs/query.md).
+
 ## [0.4.0] — 2026-09-17
 
 ### Changed

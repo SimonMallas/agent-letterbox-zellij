@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# letterbox — dependency-free helper for Agent Letterbox.
+# letterbox — shell helper for Agent Letterbox; query uses Python 3.9+.
 set -euo pipefail
 
 SCRIPT_PATH="${BASH_SOURCE[0]}"
@@ -23,6 +23,8 @@ SESSION="${LETTERBOX_SESSION:-}"
 REPLY_FILE=""
 REPLY_ALREADY=false
 LIFECYCLE_LOCK=""
+# 255-byte filename minus the 12-byte .<id>.tmp.XXXXXX wrapper.
+MAX_LETTER_ID=243
 
 die() { printf 'letterbox: %s\n' "$*" >&2; exit 1; }
 now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
@@ -624,17 +626,22 @@ report_doorbell_outcome() { # $1=child stdout $2=child exit code
 }
 
 
-publish_message() { # to type slug priority requires_ack re deadline body [thread]
+publish_message() { # to type slug priority requires_ack re deadline body [thread] [supersedes]
   local to="$1" type="$2" slug="$3" priority="$4" requires_ack="$5" re="$6" deadline="$7" body="$8"
-  local thread="${9:-}"
-  local id="$(id_now)-$ME-$type-$slug-$(random_suffix)"
+  local thread="${9:-}" supersedes="${10:-}" sent id
+  sent="$(now)" || die 'cannot obtain UTC publication time'
+  validate_utc sent "$sent"
+  id="${sent//:/}"
+  id="${id%Z}-$ME-$type-$slug-$(random_suffix)"
+  validate_relation_id id "$id"
   local inbox; inbox="$(inbox_path "$to")"
   local final="$inbox/$id.md" tmp
   tmp="$(mktemp "$inbox/.${id}.tmp.XXXXXX")" || die 'cannot create temporary message'
   {
     printf '%s\n' '---'
-    printf 'id: %s\nfrom: %s\nto: %s\ntype: %s\nre: %s\n' "$id" "$ME" "$to" "$type" "$re"
+    printf 'id: %s\nsent: %s\nfrom: %s\nto: %s\ntype: %s\nre: %s\n' "$id" "$sent" "$ME" "$to" "$type" "$re"
     [[ -n "$thread" ]] && printf 'thread: %s\n' "$thread"
+    [[ -n "$supersedes" ]] && printf 'supersedes: %s\n' "$supersedes"
     printf 'priority: %s\nrequires_ack: %s\ndeadline: %s\n' "$priority" "$requires_ack" "$deadline"
     [[ -n "$SESSION" ]] && printf 'session: %s\n' "$SESSION"
     printf '%s\n%s\n' '---' "$body"
@@ -650,12 +657,14 @@ reply_file_for() { # parent_id type agent
 
 publish_derived_reply() { # parent type body priority
   local parent="$1" type="$2" body="$3" prio="$4"
-  local parent_id parent_from thread reply_id reply_file tmp existing_body existing
+  local parent_id parent_from thread reply_id reply_file tmp existing_body existing sent
   parent_id="$(frontmatter_value "$parent" id)"
   parent_from="$(frontmatter_value "$parent" from)"
   thread="$(frontmatter_value "$parent" thread)"
   [[ -n "$thread" ]] || thread="$parent_id"
   [[ -n "$parent_id" && -n "$parent_from" ]] || die "message has invalid frontmatter: $(confirm_label "$parent")"
+  validate_reply_metadata "$parent_id" "$parent_from" "$thread" "$type"
+  validate_session
   [[ -d "$(inbox_path "$parent_from")" ]] || die "original sender has no inbox: $parent_from"
   reply_id="${parent_id}--${ME}--${type}"
   reply_file="$(inbox_path "$parent_from")/$(reply_file_for "$parent_id" "$type" "$ME")"
@@ -668,11 +677,13 @@ publish_derived_reply() { # parent type body priority
     REPLY_ALREADY=true
     return 0
   fi
+  sent="$(now)" || die 'cannot obtain UTC publication time'
+  validate_utc sent "$sent"
   tmp="$(mktemp "$(inbox_path "$parent_from")/.${reply_id}.tmp.XXXXXX")" || die 'cannot create temporary reply'
   {
     printf '%s\n' '---'
-    printf 'id: %s\nfrom: %s\nto: %s\ntype: %s\nre: %s\nthread: %s\npriority: %s\nrequires_ack: false\ndeadline:\n' \
-      "$reply_id" "$ME" "$parent_from" "$type" "$parent_id" "$thread" "$prio"
+    printf 'id: %s\nsent: %s\nfrom: %s\nto: %s\ntype: %s\nre: %s\nthread: %s\npriority: %s\nrequires_ack: false\ndeadline:\n' \
+      "$reply_id" "$sent" "$ME" "$parent_from" "$type" "$parent_id" "$thread" "$prio"
     [[ -n "$SESSION" ]] && printf 'session: %s\n' "$SESSION"
     printf '%s\n%s\n' '---' "$body"
   } > "$tmp"
@@ -742,9 +753,47 @@ release_lifecycle_lock() {
   LIFECYCLE_LOCK=""
 }
 
+validate_relation_id() {
+  local LC_ALL=C
+  [[ "$2" =~ ^[A-Za-z0-9._:-]+$ && ${#2} -le $MAX_LETTER_ID ]] || die "bad $1: expected a letter id (1..$MAX_LETTER_ID ASCII letters, digits, dot, underscore, colon or hyphen)"
+}
+
+validate_session() {
+  local LC_ALL=C
+  [[ -z "$SESSION" || "$SESSION" =~ ^[A-Za-z0-9._:-]{1,64}$ ]] \
+    || die 'bad session: expected 1..64 ASCII letters, digits, dot, underscore, colon or hyphen'
+}
+
+validate_utc() {
+  local field="$1" value="$2" LC_ALL=C
+  [[ "$value" =~ ^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})Z$ ]] \
+    || die "bad $field: expected UTC YYYY-MM-DDTHH:MM:SSZ"
+  local year=$((10#${BASH_REMATCH[1]})) month=$((10#${BASH_REMATCH[2]})) day=$((10#${BASH_REMATCH[3]}))
+  local hour=$((10#${BASH_REMATCH[4]})) minute=$((10#${BASH_REMATCH[5]})) second=$((10#${BASH_REMATCH[6]})) days
+  (( year >= 1 && month >= 1 && month <= 12 && hour < 24 && minute < 60 && second < 60 )) \
+    || die "bad $field: invalid UTC instant"
+  case "$month" in
+    4|6|9|11) days=30;;
+    2)
+      days=28
+      if (( year % 4 == 0 && (year % 100 != 0 || year % 400 == 0) )); then days=29; fi;;
+    *) days=31;;
+  esac
+  (( day >= 1 && day <= days )) || die "bad $field: invalid UTC date"
+}
+
+validate_reply_metadata() { # parent id, sender, thread, reply type
+  validate_relation_id id "$1"
+  need_agent "$2"
+  validate_relation_id thread "${3:-$1}"
+  validate_relation_id id "$1--$ME--$4"
+}
+
 cmd_send() {
+  local LC_ALL=C
   need_me
-  local to="${1:?usage: letterbox send <to> <type> <slug> [--now] [--ack] [--re <id>] [--thread <id>] [--deadline <UTC>]}"
+  validate_session
+  local to="${1:?usage: letterbox send <to> <type> <slug> [--now] [--ack] [--re <id>] [--thread <id>] [--supersedes <id>] [--deadline <UTC>]}"
   local type="${2:?missing type}" slug="${3:?missing slug}"; shift 3
   need_agent "$to"
   [[ -d "$(inbox_path "$to")" ]] || die "unknown recipient: $to (run init first)"
@@ -752,25 +801,36 @@ cmd_send() {
   case "$type" in ack|nack|result) die 'use letterbox reply for ownership replies';; esac
   slug="$(printf '%s' "$slug" | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-')"
   [[ -n "$slug" ]] || die 'slug became empty'
-  local priority=next requires_ack=false re='' deadline='' thread=''
+  # Reserve --<recipient>--result for a terminal reply to this new send.
+  # The parent prefix/suffix use 17 time bytes, four '-', eight random hex.
+  local max_slug=$((MAX_LETTER_ID - ${#to} - 10 - 29 - ${#ME} - ${#type}))
+  (( max_slug >= 0 )) || max_slug=0
+  (( ${#slug} <= max_slug )) || die "slug too long: max $max_slug characters for this sender/recipient/type"
+  local priority=next requires_ack=false re='' deadline='' thread='' supersedes=''
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --now) priority=now;; --ack) requires_ack=true;;
       --re) re="${2:?missing reply id}"; shift;;
       --thread) thread="${2:?missing thread id}"; shift;;
-      --deadline) deadline="${2:?missing deadline}"; shift;;
+      --supersedes)
+        [[ -z "$supersedes" ]] || die 'repeated --supersedes'
+        supersedes="${2:?missing supersedes id}"; shift;;
+      --deadline) deadline="${2?missing deadline}"; shift;;
       *) die "unknown option: $1";;
     esac
     shift
   done
   [[ "$type" != "delegate" || "$requires_ack" == true ]] || die 'delegate letters require --ack'
-  [[ -z "$thread" || "$thread" =~ ^[A-Za-z0-9._:-]+$ ]] || die "bad thread id '$thread'"
+  [[ -z "$re" ]] || validate_relation_id re "$re"
+  [[ -z "$thread" ]] || validate_relation_id thread "$thread"
+  [[ -z "$supersedes" ]] || validate_relation_id supersedes "$supersedes"
+  [[ -z "$deadline" ]] || validate_utc deadline "$deadline"
   local body
   if ! IFS= read -r -d '' body < <(cat; printf '\0'); then die 'cannot read message body'; fi
   body="$(printf '%s' "$body")"
   [[ -n "${body//[[:space:]]/}" ]] || die 'empty message body; pipe the body via stdin (letterbox send <to> <type> <slug> [--now])'
   local final letter_id
-  final="$(publish_message "$to" "$type" "$slug" "$priority" "$requires_ack" "$re" "$deadline" "$body" "$thread")"
+  final="$(publish_message "$to" "$type" "$slug" "$priority" "$requires_ack" "$re" "$deadline" "$body" "$thread" "$supersedes")"
   letter_id="$(basename "$final" .md)"
   printf 'sent: %s\n' "$final"
   [[ "$priority" == now ]] && ring_doorbell "$to" "$type" "$slug" "$letter_id"
@@ -1213,6 +1273,7 @@ archive_message() {
 
 cmd_reply() {
   need_me
+  validate_session
   local message="${1:?usage: letterbox reply <id-or-file> <ack|nack|result> <slug> [--now]}"
   local type="${2:?missing reply type}" slug="${3:?missing reply slug}"; shift 3
   case "$type" in ack|nack|result) ;; *) die 'reply type must be ack, nack, or result';; esac
@@ -1224,7 +1285,7 @@ cmd_reply() {
   slug="$(printf '%s' "$slug" | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-')"
   [[ -n "$slug" ]] || die 'slug became empty'
 
-  local msg parent_id parent_from expected_reply doorbell_to inbox_canon processed_canon req
+  local msg parent_id parent_from expected_reply doorbell_to inbox_canon processed_canon req parent_thread
   msg="$(resolve_owned_message "$message")"
   frontmatter_value "$msg" id >/dev/null || die "malformed letter (need opening and closing ---)"
   inbox_canon="$(canonical_dir "$(inbox_path "$ME")")"
@@ -1256,6 +1317,9 @@ cmd_reply() {
     *) die "message has invalid requires_ack '$req' (expected true or false)";;
   esac
   doorbell_to="$(frontmatter_value "$msg" from)"
+  parent_id="$(frontmatter_value "$msg" id)"
+  parent_thread="$(frontmatter_value "$msg" thread)"
+  validate_reply_metadata "$parent_id" "$doorbell_to" "$parent_thread" "$type"
   # Body before lock: a hanging stdin must not pin the letter.
   read_reply_body_or_die
   acquire_lifecycle_lock "$msg"
@@ -1393,6 +1457,18 @@ cmd_unlock() {
   rm "$lease" && rmdir "$lock"
   printf 'unlocked: %s\n' "$lock"
 }
+cmd_query() {
+  command -v python3 >/dev/null 2>&1 || die 'query requires Python 3.9 or newer (python3)'
+  python3 -I -B -c 'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)' 2>/dev/null \
+    || die 'query requires Python 3.9 or newer (python3)'
+  if [[ "${1:-}" == --compat-v2 ]]; then
+    shift
+    python3 -I -B "$SCRIPT_DIR/../lib/query/query.py" --root "$BOX" "$@"
+  else
+    python3 -I -B "$SCRIPT_DIR/../lib/query/strict.py" "$BOX" "$@"
+  fi
+}
+
 cmd_status() {
   need_me
   local state="${1:?usage: letterbox status <working|idle|blocked>}" note="${2:-}"
@@ -1405,8 +1481,9 @@ case "${1:-}" in
   init) shift; cmd_init "$@";; send) shift; cmd_send "$@";; check) shift; cmd_check "$@";;
   read) shift; cmd_read "$@";; progress) shift; cmd_progress "$@";; nudge) shift; cmd_nudge "$@";; token) shift; cmd_token "$@";;
   doorbell-line) shift; cmd_doorbell_line "$@";; doorbell-parse) shift; cmd_doorbell_parse "$@";;
+  query) shift; cmd_query "$@";;
   reply) shift; cmd_reply "$@";; file) shift; cmd_file "$@";; done) shift; cmd_done "$@";;
   lock) shift; cmd_lock "$@";; unlock) shift; cmd_unlock "$@";;
   status) shift; cmd_status "$@";; zellij) shift; cmd_zellij "$@";;
-  *) printf 'usage: letterbox {init|send|check|read|progress|nudge|doorbell-line|doorbell-parse|token|reply|file|done|lock|unlock|status|zellij|--version} ...\n\nzellij: setup | run | register | unregister | status\n' >&2; exit 2;;
+  *) printf 'usage: letterbox {init|send|check|query|read|progress|nudge|doorbell-line|doorbell-parse|token|reply|file|done|lock|unlock|status|zellij|--version} ...\n\nzellij: setup | run | register | unregister | status\n' >&2; exit 2;;
 esac
