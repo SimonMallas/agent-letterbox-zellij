@@ -42,15 +42,35 @@ except subprocess.TimeoutExpired:
 ' "$@"
 }
 
+# Remove every process of one disposable session (holder, client, server)
+# and prove none is left, so a failed attempt cannot leak into the next.
+reap_session() { # $1 = session name
+  local name="$1" i
+  zb 10 delete-session --force "$name" >/dev/null 2>&1 || true
+  if [[ -n "${zellij_pid:-}" ]]; then
+    kill "$zellij_pid" >/dev/null 2>&1 || true
+    wait "$zellij_pid" 2>/dev/null || true
+    zellij_pid=""
+  fi
+  pkill -f -- "$name" >/dev/null 2>&1 || true
+  for i in 1 2 3 4 5 6 7 8 9 10; do
+    pgrep -f -- "$name" >/dev/null 2>&1 || return 0
+    sleep 0.5
+  done
+  pkill -9 -f -- "$name" >/dev/null 2>&1 || true
+  sleep 0.5
+  if pgrep -f -- "$name" >/dev/null 2>&1; then
+    echo "zellij cleanup: processes for $name still present:" >&2
+    ps -A -o pid=,command= | awk -v s="$name" 'index($0, s) && !index($0, "awk -v s")' >&2 || true
+  fi
+}
+
 cleanup() {
   set +e
-  if [[ -n "${sess:-}" ]]; then
-    zb 10 delete-session --force "$sess" >/dev/null 2>&1
-  fi
-  if [[ -n "${zellij_pid:-}" ]]; then
-    kill "$zellij_pid" >/dev/null 2>&1
-    wait "$zellij_pid" 2>/dev/null
-  fi
+  local n
+  for n in 1 2 3; do
+    reap_session "lbz$$a$n"
+  done
   rm -rf "$tmp"
 }
 trap cleanup EXIT
@@ -125,10 +145,7 @@ PY
       echo "--- $f"; tail -c 3000 "$f"; echo
     done
   } >&2
-  zb 10 delete-session --force "$sess" >/dev/null 2>&1 || true
-  kill "$zellij_pid" >/dev/null 2>&1 || true
-  wait "$zellij_pid" 2>/dev/null || true
-  zellij_pid=""
+  reap_session "$sess"
   return 1
 }
 
