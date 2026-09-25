@@ -62,16 +62,23 @@ reap_session() { # $1 = session name
   if pgrep -f -- "$name" >/dev/null 2>&1; then
     echo "zellij cleanup: processes for $name still present:" >&2
     ps -A -o pid=,command= | awk -v s="$name" 'index($0, s) && !index($0, "awk -v s")' >&2 || true
+    return 1
   fi
+  return 0
 }
 
 cleanup() {
+  local rc=$? n leaked=0
   set +e
-  local n
   for n in 1 2 3; do
-    reap_session "lbz$$a$n"
+    reap_session "lbz$$a$n" || leaked=1
   done
   rm -rf "$tmp"
+  if (( leaked )); then
+    echo 'zellij bootstrap test: FAIL (disposable Zellij processes left behind at exit)' >&2
+    exit 1
+  fi
+  exit "$rc"
 }
 trap cleanup EXIT
 
@@ -145,7 +152,10 @@ PY
       echo "--- $f"; tail -c 3000 "$f"; echo
     done
   } >&2
-  reap_session "$sess"
+  if ! reap_session "$sess"; then
+    echo 'zellij bootstrap test: FAIL (failed attempt left processes behind)' >&2
+    exit 1
+  fi
   return 1
 }
 
