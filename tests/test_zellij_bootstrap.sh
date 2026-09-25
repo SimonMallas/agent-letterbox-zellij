@@ -22,7 +22,7 @@ mkdir -p "$tmp/ipc"
 # Zellij unix sockets sit under TMPDIR. Darwin sun_path is 104 bytes
 # including NUL; a long inherited TMPDIR leaves 0 bytes for the session name.
 export TMPDIR="$tmp/ipc"
-sess="lbz$$"
+sess=""
 zellij_pid=""
 export PATH="$root/bin:$PATH"
 
@@ -55,9 +55,17 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Hold a real PTY so the disposable session stays active.
-# The holder keeps zellij's own PTY output and exit status for diagnostics.
-python3 - "$sess" "$tmp/zellij-pty.log" "$tmp/zellij-exit" <<'PY' &
+# Start the disposable session. On GitHub's macOS runners the Zellij server
+# itself occasionally dies during start-up (client: "Received empty unknown
+# from server"), before any Letterbox code runs. Only this harness set-up is
+# retried, at most 3 attempts, each with a fresh session and full diagnostics;
+# every Letterbox assertion below runs exactly once.
+start_session() { # $1 = attempt number; 0 = session ready with terminal_0
+  local n="$1" d="$tmp/attempt$1" t0=$SECONDS ready=0 panes
+  mkdir -p "$d"
+  sess="lbz$$a$n"
+  # The holder keeps a real PTY open and records zellij's output and exit status.
+  python3 - "$sess" "$d/pty.log" "$d/exit" <<'PY' &
 import os, pty, sys
 sess, log_path, exit_path = sys.argv[1], sys.argv[2], sys.argv[3]
 env = os.environ.copy()
@@ -65,7 +73,8 @@ env["TERM"] = "xterm-256color"
 pid, fd = pty.fork()
 if pid == 0:
     os.chdir("/tmp")
-    os.execvpe("zellij", ["zellij", "-s", sess], env)
+    os.write(1, b"[holder] exec zellij --debug -s " + sess.encode() + b"\r\n")
+    os.execvpe("zellij", ["zellij", "--debug", "-s", sess], env)
 with open(log_path, "ab", buffering=0) as log:
     try:
         while True:
@@ -84,35 +93,54 @@ with open(exit_path, "w") as f:
         os.WEXITSTATUS(status) if os.WIFEXITED(status) else "-",
         os.WTERMSIG(status) if os.WIFSIGNALED(status) else "-"))
 PY
-zellij_pid=$!
+  zellij_pid=$!
+  # Wait for the first terminal pane, not just a responding server.
+  while (( SECONDS < t0 + 60 )); do
+    panes="$(zb 5 -s "$sess" action list-panes 2>/dev/null || true)"
+    if printf '%s\n' "$panes" | grep -q 'terminal_0'; then
+      ready=1
+      break
+    fi
+    [[ -s "$d/exit" ]] && break  # client already gone: stop waiting
+    sleep 0.1
+  done
+  (( ready == 1 )) && return 0
+  {
+    echo "zellij session start attempt $n failed after $((SECONDS - t0))s (no terminal_0)"
+    zb 5 list-sessions || true
+    if [[ -s "$d/exit" ]]; then
+      echo "zellij client exited: $(cat "$d/exit")"
+    else
+      echo 'zellij client still running (no exit recorded)'
+    fi
+    echo "holder process tree:"
+    ps -A -o pid=,ppid=,stat=,etime=,command= 2>/dev/null \
+      | awk -v s="$sess" -v p="$zellij_pid" '(index($0, s) || $1 == p || $2 == p) && !index($0, "awk -v s")' || true
+    echo "zellij PTY output: $(wc -c < "$d/pty.log" 2>/dev/null | tr -d ' ') bytes; last 4000, escapes stripped:"
+    tail -c 4000 "$d/pty.log" 2>/dev/null \
+      | perl -pe 's/\e\[[0-9;?]*[ -\/]*[@-~]//g; s/\e[\]P^_].*?(\a|\e\\)//g; s/\e.//g; s/\r/\n/g' \
+      | grep -v '^[[:space:]]*$' | tail -40 || true
+    echo "zellij debug log (tail):"
+    find "$TMPDIR" -path '*zellij-log*' -type f -name '*.log' 2>/dev/null | while read -r f; do
+      echo "--- $f"; tail -c 3000 "$f"; echo
+    done
+  } >&2
+  zb 10 delete-session --force "$sess" >/dev/null 2>&1 || true
+  kill "$zellij_pid" >/dev/null 2>&1 || true
+  wait "$zellij_pid" 2>/dev/null || true
+  zellij_pid=""
+  return 1
+}
 
-ready=0
-# Wait for the first terminal pane, not just a responding server: on slow
-# runners list-panes can answer with only its header before terminal_0 exists.
-deadline=$((SECONDS + 60))
-while (( SECONDS < deadline )); do
-  panes="$(zb 5 -s "$sess" action list-panes 2>/dev/null || true)"
-  if printf '%s\n' "$panes" | grep -q 'terminal_0'; then
-    ready=1
-    break
+attempts=0
+until start_session "$((attempts + 1))"; do
+  attempts=$((attempts + 1))
+  if (( attempts >= 3 )); then
+    echo 'zellij bootstrap test: FAIL (disposable Zellij session did not start in 3 attempts)' >&2
+    exit 1
   fi
-  [[ -s "$tmp/zellij-exit" ]] && break  # client already gone: fail now
-  sleep 0.1
 done
-if [[ "$ready" != 1 ]]; then
-  echo 'zellij bootstrap test: FAIL (no terminal_0; waited up to 60s)' >&2
-  zb 5 list-sessions >&2 || true
-  if [[ -s "$tmp/zellij-exit" ]]; then
-    echo "zellij client exited: $(cat "$tmp/zellij-exit")" >&2
-  else
-    echo 'zellij client still running (no exit recorded)' >&2
-  fi
-  echo 'zellij PTY output (last 4000 bytes, escapes stripped):' >&2
-  tail -c 4000 "$tmp/zellij-pty.log" 2>/dev/null \
-    | perl -pe 's/\e\[[0-9;?]*[ -\/]*[@-~]//g; s/\e[\]P^_].*?(\a|\e\\)//g; s/\e.//g; s/\r/\n/g' \
-    | grep -v '^[[:space:]]*$' | tail -40 >&2 || true
-  exit 1
-fi
+attempts=$((attempts + 1))
 
 # Default first terminal pane in a fresh session is terminal_0 / pane id 0.
 pane_list="$(zb 10 -s "$sess" action list-panes)"
@@ -120,7 +148,7 @@ printf '%s\n' "$pane_list" | grep -q 'terminal_0' || {
   echo "unexpected panes: $pane_list" >&2
   exit 1
 }
-printf '%s\n' "isolated session ready: sess=$sess pane=terminal_0"
+printf '%s\n' "isolated session ready: sess=$sess pane=terminal_0 attempts=$attempts"
 
 box="$tmp/box"
 
