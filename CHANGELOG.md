@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.5.0] — unreleased (zellij edition)
+## [0.5.0] — 2026-09-25 (zellij edition)
 
 - Add read-only `letterbox query`: strict-v1 envelope cards by default and
   explicit `--compat-v2` JSON with diagnostics and scoped completeness.
