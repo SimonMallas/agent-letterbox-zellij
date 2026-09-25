@@ -26,10 +26,26 @@ sess="lbz$$"
 zellij_pid=""
 export PATH="$root/bin:$PATH"
 
+# Every direct zellij call is time-bounded: a blocked client must fail the test
+# with a named diagnostic, never hang the job. Mirrors the adapter's bounded_cmd.
+zb() { # $1=seconds, rest=zellij argv; 124 = timed out
+  python3 -c '
+import os, signal, subprocess, sys
+p = subprocess.Popen(["zellij"] + sys.argv[2:], start_new_session=True)
+try:
+    sys.exit(p.wait(timeout=float(sys.argv[1])))
+except subprocess.TimeoutExpired:
+    os.killpg(p.pid, signal.SIGKILL)
+    p.wait()
+    sys.stderr.write("zellij call timed out after %ss: zellij %s\n" % (sys.argv[1], " ".join(sys.argv[2:])))
+    sys.exit(124)
+' "$@"
+}
+
 cleanup() {
   set +e
   if [[ -n "${sess:-}" ]]; then
-    zellij delete-session --force "$sess" >/dev/null 2>&1
+    zb 10 delete-session --force "$sess" >/dev/null 2>&1
   fi
   if [[ -n "${zellij_pid:-}" ]]; then
     kill "$zellij_pid" >/dev/null 2>&1
@@ -64,8 +80,9 @@ zellij_pid=$!
 ready=0
 # Wait for the first terminal pane, not just a responding server: on slow
 # runners list-panes can answer with only its header before terminal_0 exists.
-for _ in $(seq 1 300); do
-  panes="$(zellij -s "$sess" action list-panes 2>/dev/null || true)"
+deadline=$((SECONDS + 60))
+while (( SECONDS < deadline )); do
+  panes="$(zb 5 -s "$sess" action list-panes 2>/dev/null || true)"
   if printf '%s\n' "$panes" | grep -q 'terminal_0'; then
     ready=1
     break
@@ -73,13 +90,13 @@ for _ in $(seq 1 300); do
   sleep 0.1
 done
 if [[ "$ready" != 1 ]]; then
-  echo 'zellij bootstrap test: FAIL (could not start disposable Zellij session)' >&2
-  zellij list-sessions >&2 || true
+  echo 'zellij bootstrap test: FAIL (no terminal_0 within 60s)' >&2
+  zb 5 list-sessions >&2 || true
   exit 1
 fi
 
 # Default first terminal pane in a fresh session is terminal_0 / pane id 0.
-pane_list="$(zellij -s "$sess" action list-panes)"
+pane_list="$(zb 10 -s "$sess" action list-panes)"
 printf '%s\n' "$pane_list" | grep -q 'terminal_0' || {
   echo "unexpected panes: $pane_list" >&2
   exit 1
@@ -109,8 +126,8 @@ printf '%s\n' 'zellij setup: PASS'
 : > "$box/zellij-patterns.tsv"
 # Zellij injects ZELLIJ_PANE_ID / ZELLIJ_SESSION_NAME into pane shells.
 run_cmd="export PATH='$root/bin:'\"\$PATH\" LETTERBOX_DIR='$box' LETTERBOX_ZELLIJ_REGISTRY='$box/zellij-agents.tsv'; letterbox zellij run alpha -- sleep 3600"
-zellij -s "$sess" action write-chars --pane-id terminal_0 "$run_cmd"
-zellij -s "$sess" action write --pane-id terminal_0 13
+zb 10 -s "$sess" action write-chars --pane-id terminal_0 "$run_cmd"
+zb 10 -s "$sess" action write --pane-id terminal_0 13
 
 registered=0
 for _ in $(seq 1 60); do
@@ -124,7 +141,7 @@ if [[ "$registered" != 1 ]]; then
   echo 'letterbox zellij run did not register alpha' >&2
   cat "$box/zellij-agents.tsv" >&2 || true
   dump="$tmp/fail-reg.txt"
-  zellij -s "$sess" action dump-screen --pane-id terminal_0 --path "$dump" 2>/dev/null || true
+  zb 10 -s "$sess" action dump-screen --pane-id terminal_0 --path "$dump" 2>/dev/null || true
   cat "$dump" >&2 || true
   exit 1
 fi
@@ -157,7 +174,7 @@ LETTERBOX_ZELLIJ_SUBMIT=1 \
 
 sleep 0.5
 dump="$tmp/door-dump.txt"
-zellij -s "$sess" action dump-screen --pane-id terminal_0 --path "$dump"
+zb 10 -s "$sess" action dump-screen --pane-id terminal_0 --path "$dump"
 if ! grep -Fq "unacked delegate in $box/alpha/inbox/" "$dump"; then
   echo "doorbell not found in dump-screen:" >&2
   cat "$dump" >&2
