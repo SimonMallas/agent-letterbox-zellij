@@ -56,24 +56,33 @@ cleanup() {
 trap cleanup EXIT
 
 # Hold a real PTY so the disposable session stays active.
-python3 - "$sess" <<'PY' &
+# The holder keeps zellij's own PTY output and exit status for diagnostics.
+python3 - "$sess" "$tmp/zellij-pty.log" "$tmp/zellij-exit" <<'PY' &
 import os, pty, sys
-sess = sys.argv[1]
+sess, log_path, exit_path = sys.argv[1], sys.argv[2], sys.argv[3]
 env = os.environ.copy()
 env["TERM"] = "xterm-256color"
 pid, fd = pty.fork()
 if pid == 0:
     os.chdir("/tmp")
     os.execvpe("zellij", ["zellij", "-s", sess], env)
-try:
-    while True:
-        try:
-            os.read(fd, 1024)
-        except OSError:
-            break
-except KeyboardInterrupt:
-    pass
-os.waitpid(pid, 0)
+with open(log_path, "ab", buffering=0) as log:
+    try:
+        while True:
+            try:
+                data = os.read(fd, 4096)
+            except OSError:
+                break
+            if not data:
+                break
+            log.write(data)
+    except KeyboardInterrupt:
+        pass
+_, status = os.waitpid(pid, 0)
+with open(exit_path, "w") as f:
+    f.write("exit=%s signal=%s\n" % (
+        os.WEXITSTATUS(status) if os.WIFEXITED(status) else "-",
+        os.WTERMSIG(status) if os.WIFSIGNALED(status) else "-"))
 PY
 zellij_pid=$!
 
@@ -87,11 +96,21 @@ while (( SECONDS < deadline )); do
     ready=1
     break
   fi
+  [[ -s "$tmp/zellij-exit" ]] && break  # client already gone: fail now
   sleep 0.1
 done
 if [[ "$ready" != 1 ]]; then
-  echo 'zellij bootstrap test: FAIL (no terminal_0 within 60s)' >&2
+  echo 'zellij bootstrap test: FAIL (no terminal_0; waited up to 60s)' >&2
   zb 5 list-sessions >&2 || true
+  if [[ -s "$tmp/zellij-exit" ]]; then
+    echo "zellij client exited: $(cat "$tmp/zellij-exit")" >&2
+  else
+    echo 'zellij client still running (no exit recorded)' >&2
+  fi
+  echo 'zellij PTY output (last 4000 bytes, escapes stripped):' >&2
+  tail -c 4000 "$tmp/zellij-pty.log" 2>/dev/null \
+    | perl -pe 's/\e\[[0-9;?]*[ -\/]*[@-~]//g; s/\e[\]P^_].*?(\a|\e\\)//g; s/\e.//g; s/\r/\n/g' \
+    | grep -v '^[[:space:]]*$' | tail -40 >&2 || true
   exit 1
 fi
 
