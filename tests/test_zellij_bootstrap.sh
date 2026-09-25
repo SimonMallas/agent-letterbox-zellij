@@ -62,8 +62,11 @@ PY
 zellij_pid=$!
 
 ready=0
-for _ in $(seq 1 80); do
-  if zellij -s "$sess" action list-panes >/dev/null 2>&1; then
+# Wait for the first terminal pane, not just a responding server: on slow
+# runners list-panes can answer with only its header before terminal_0 exists.
+for _ in $(seq 1 300); do
+  panes="$(zellij -s "$sess" action list-panes 2>/dev/null || true)"
+  if printf '%s\n' "$panes" | grep -q 'terminal_0'; then
     ready=1
     break
   fi
