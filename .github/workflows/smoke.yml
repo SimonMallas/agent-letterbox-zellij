@@ -25,5 +25,59 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
+      - name: Install pinned Zellij 0.44.3
+        run: |
+          set -euo pipefail
+          version=0.44.3
+          os="$(uname -s)"
+          arch="$(uname -m)"
+          case "$os:$arch" in
+            Linux:x86_64)
+              asset=zellij-x86_64-unknown-linux-musl.tar.gz
+              sha256=0f7c346788627f506c0a28296517768633cff24fc822a739f8264b640ecad751
+              ;;
+            Linux:aarch64)
+              asset=zellij-aarch64-unknown-linux-musl.tar.gz
+              sha256=15e6534d42644d66973d136c590c49739dcfd6a1a2a0d3d917973f16c81b45fb
+              ;;
+            Darwin:arm64)
+              asset=zellij-aarch64-apple-darwin.tar.gz
+              sha256=b6acf83a7739cf5f0f4e9bd47709642d4d98acbbf8c34d4a12c6e706f531da61
+              ;;
+            Darwin:x86_64)
+              asset=zellij-x86_64-apple-darwin.tar.gz
+              sha256=59f803faa32cd4e5f316f0dc2d3b7a5530a72553e38ad939286471848a418eeb
+              ;;
+            *)
+              echo "unsupported runner $os $arch" >&2
+              exit 1
+              ;;
+          esac
+          url="https://github.com/zellij-org/zellij/releases/download/v${version}/${asset}"
+          dest="${RUNNER_TEMP}/zellij-pin"
+          mkdir -p "$dest" "$HOME/.local/bin"
+          curl -fsSL -o "$dest/$asset" "$url"
+          python3 - "$dest/$asset" "$sha256" <<'PY'
+          import hashlib, sys
+          path, expected = sys.argv[1], sys.argv[2]
+          got = hashlib.sha256(open(path, "rb").read()).hexdigest()
+          if got != expected:
+              raise SystemExit(f"checksum mismatch {path}: got {got} want {expected}")
+          print(f"checksum ok {got}")
+          PY
+          tar -xzf "$dest/$asset" -C "$dest"
+          install -m 0755 "$dest/zellij" "$HOME/.local/bin/zellij"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/bin/zellij" --version | grep -F "$version"
+
       - name: Run test suite
-        run: make ci
+        run: |
+          set -euo pipefail
+          log="${RUNNER_TEMP}/make-ci.log"
+          make ci 2>&1 | tee "$log"
+          if grep -E 'zellij bootstrap test: SKIP|SKIP \(zellij unavailable\)' "$log"; then
+            echo "native Zellij tests skipped" >&2
+            exit 1
+          fi
+          grep -qF 'zellij bootstrap test: PASS' "$log"
+          grep -qF 'registry-first live doorbell: PASS' "$log"

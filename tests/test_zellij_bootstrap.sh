@@ -18,7 +18,10 @@ command -v python3 >/dev/null 2>&1 || {
 
 tmp="/tmp/lbz$$"
 rm -rf "$tmp"
-mkdir -p "$tmp"
+mkdir -p "$tmp/ipc"
+# Zellij unix sockets sit under TMPDIR. Darwin sun_path is 104 bytes
+# including NUL; a long inherited TMPDIR leaves 0 bytes for the session name.
+export TMPDIR="$tmp/ipc"
 sess="lbz$$"
 zellij_pid=""
 export PATH="$root/bin:$PATH"
