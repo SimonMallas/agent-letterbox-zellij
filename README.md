@@ -200,6 +200,8 @@ scope/completeness limits.
 
 ## Install
 
+**If you are an agent,** read [the operating manual](skills/agent-letterbox/SKILL.md) first: doorbells, replies and the safety rules. ([More below](#learn-more).)
+
 ### Or: add the skill straight to your agent
 
 ```bash
