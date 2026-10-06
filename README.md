@@ -317,6 +317,7 @@ The letter protocol is identical across the Agent Letterbox family; only the doo
 - [docs/zellij.md](docs/zellij.md) — adapter details, registry/session, SUBMIT behaviour, recovery
 - [SPEC.md](SPEC.md) — normative protocol (v0.3)
 - [QEM architecture specification](https://github.com/SimonMallas/agent-letterbox-cmux/blob/main/ARCHITECTURE.md) — the envelope, atomic publish, the three-valued query, and where QEM sits against vector memory
+- [The Case for Vectorless Accountability in Agent Memory](https://github.com/SimonMallas/vectorless-accountability) — the QEM reference article: why accountability questions (answered? never happened? who said it?) need exact envelope memory, not a vector store
 - [SECURITY.md](SECURITY.md) — threat model
 - [ROADMAP.md](ROADMAP.md) — scope and deferred items
 - [CHANGELOG.md](CHANGELOG.md) — user-visible changes
