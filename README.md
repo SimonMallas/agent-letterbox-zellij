@@ -194,7 +194,9 @@ No servers beyond Zellij’s local multiplexer. No SSH/remote transport, plugins
 `letterbox query` additionally needs Python 3.9 or newer (standard library
 only); the existing bounded doorbell also uses Python 3. macOS Command Line
 Tools provide Python 3 alongside Git, and many Linux
-distributions include it; check `python3 --version`. See [Queryable envelope
+distributions include it; check `python3 --version`. Stale lifecycle-lock
+recovery uses Perl (standard on macOS and Debian/Ubuntu); without it, recovery
+times out rather than removing a lock unsafely. See [Queryable envelope
 memory](docs/query.md) for strict-v1 queries, explicit `--compat-v2` output, and
 scope/completeness limits.
 
