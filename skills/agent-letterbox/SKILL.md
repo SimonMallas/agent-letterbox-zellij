@@ -41,6 +41,10 @@ Match a doorbell line by **prefix/pattern only**. BOTH shapes are valid during t
 - The token is opaque — never a slug, body, or path. `letterbox token <8hex>` resolves a doorbell to `unhandled` / `already filed` (dismiss the echo) / `unknown`.
 - A doorbell outcome (`submitted` / `pasted_not_submitted` / `no_live_surface`) never proves the letter was read or a turn started.
 
+## Agent Letter Bridge integrated mode
+
+If Agent Letter Bridge is configured with this public helper as `ALB_BUS_BINARY`, it calls `letterbox ring <recipient> <type> <letter-id>` only after it has written the durable relay letter. `ring` validates that the matching regular letter is in the recipient inbox before it announces anything. A Bridge service that has `LETTERBOX_DIR` but not the pane environment uses the box's generated `env.sh`; an explicit doorbell setting takes precedence.
+
 ## Startup and resume
 
 1. If you are running in Zellij, register your current pane (pane ids change after rebuild):

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add `letterbox ring <recipient> <type> <letter-id>` for Agent Letter Bridge integrated mode. It announces only a matching durable inbox letter and loads the configured box environment when a Bridge service supplies `LETTERBOX_DIR` without a doorbell setting.
+
 ## [0.5.0] — 2026-09-25 (zellij edition)
 
 - Add read-only `letterbox query`: strict-v1 envelope cards by default and
