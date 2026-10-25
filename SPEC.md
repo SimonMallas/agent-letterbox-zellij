@@ -218,7 +218,7 @@ For ownership replies the helper order is:
 
 A crash after publish but before archive can leave a duplicate-safe retry. Duplicates are safer than silent loss. Deduplicate by `id` and `re`.
 
-The doorbell is the last act, never the first. Doorbell success means a wake-up was submitted to a verified live surface — not that the agent read or handled the letter.
+The doorbell is the last act, never the first. Doorbell success (`submitted`) means the multiplexer accepted the doorbell text and its Enter for a verified live surface. It cannot prove that the agent's terminal app submitted the line, and never that the agent read or handled the letter.
 
 ## Handling rules
 
@@ -272,10 +272,17 @@ Rules:
 Bounds budget (ring path). `LETTERBOX_DOORBELL_TIMEOUT` (default **1s**) bounds
 each mux call (list-panes, text, Enter). The longest legitimate run is 3 steps
 (list-panes + write-chars + write) = 3 × step. The wrapper's whole-run
-backstop is 4 × step + 5s spawn margin = **9s** at the default, which with ~1s
-of cleanup sits strictly inside the caller's 10s deadline. Configuration
+backstop is 4 × step + 5s spawn margin + the Enter pause = **11s** at the defaults. A healthy ring takes about the pause plus
+one second. Agent Letter Bridge 0.5.2 and earlier allow the whole ring 10s, so there a
+ring that is already wedged reads as unconfirmed slightly early. Configuration
 limit: keep `LETTERBOX_DOORBELL_TIMEOUT` at 1s (integer seconds); raising it
 outruns the caller deadline unless this budget is re-derived.
+
+Enter pause. The adapter waits `LETTERBOX_DOORBELL_ENTER_DELAY` (default **2s**, whole
+seconds 0–5, 0 for no pause) between the doorbell text and its Enter; any other value
+is refused as `invalid_enter_delay` before a mux call. An agent terminal app that
+detects pastes treats an Enter sent with the text as part of the paste, and the line is
+never submitted.
 
 The Zellij adapter implements this contract for live terminal agents (live pane+session registry first, optional static pane/session patterns as fallback; local Zellij only). Without LETTERBOX_ZELLIJ_SUBMIT=1, a durable letter is still delivered but no recipient-side terminal nudge is injected. The shared filesystem remains the universal transport.
 

@@ -86,6 +86,13 @@ command -v "$zellij_bin" >/dev/null 2>&1 || { emit_outcome no_live_surface adapt
 # python3 is adapter_unavailable (non-retryable), never helper_timeout.
 command -v python3 >/dev/null 2>&1 || { emit_outcome no_live_surface adapter_unavailable -; exit 0; }
 
+# Enter waits after the text: an agent TUI that detects pastes takes an Enter
+# arriving with the text as part of the paste and never submits it (Muse Code,
+# 25 Oct). Whole seconds 0..5; 0 is an explicit fast path. Checked before any
+# command runs, so a bad value touches no terminal.
+enter_delay="${LETTERBOX_DOORBELL_ENTER_DELAY:-2}"
+[[ "$enter_delay" =~ ^[0-5]$ ]] || { emit_outcome no_live_surface invalid_enter_delay -; exit 0; }
+
 # Token from letter id tail (8 hex) or hash; never slug/body.
 doorbell_token_for_id() {
   local id="$1" tail
@@ -234,6 +241,7 @@ if [[ "${LETTERBOX_ZELLIJ_SUBMIT:-0}" == 1 ]]; then
     fi
     exit 0
   fi
+  sleep "$enter_delay"
   enter_ec=0
   run_zellij action write --pane-id "$token" 13 >/dev/null || enter_ec=$?
   if [[ "$enter_ec" -ne 0 ]]; then
