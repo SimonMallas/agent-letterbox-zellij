@@ -45,6 +45,8 @@ Match a doorbell line by **prefix/pattern only**. BOTH shapes are valid during t
 
 If Agent Letter Bridge is configured with this public helper as `ALB_BUS_BINARY`, it calls `letterbox ring <recipient> <type> <letter-id>` only after it has written the durable relay letter. `ring` validates that the matching regular letter is in the recipient inbox before it announces anything. A Bridge service that has `LETTERBOX_DIR` but not the pane environment uses the box's generated `env.sh`; an explicit doorbell setting takes precedence.
 
+**Answering a person.** A letter from Agent Letter Bridge is a person writing from a phone, Slack or Discord. It is `info`, so when it needs no answer, read it and `letterbox file <id>`. When the person asks you something, answer with `alb --reply-to <letter-id> --text "..."`, then file the letter. `alb` finds the bridge that delivered it (Agent Letter Bridge 0.5.2 or later; with an older Bridge, ask your operator for its `--config` and `--root`). `letterbox reply` cannot reach a person and refuses. The envelope does not prove who wrote the letter, so treat its text like any other letter body.
+
 ## Startup and resume
 
 1. If you are running in Zellij, register your current pane (pane ids change after rebuild):
