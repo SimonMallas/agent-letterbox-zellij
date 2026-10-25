@@ -82,6 +82,8 @@ The agent wakes, picks up the real task from disk, replies, and keeps the work f
 
 **Without `LETTERBOX_ZELLIJ_SUBMIT=1`, a durable letter is still delivered to the recipient's inbox, but no recipient-side terminal ring occurs.** The adapter only reports that a live target was found. Agents must still check their inbox at startup, after tasks, and at checkpoints. Enable `--automatic-doorbells` (or export `LETTERBOX_ZELLIJ_SUBMIT=1`) only on dedicated agent panes if you want the terminal to receive a ring.
 
+Before pressing Enter, Letterbox waits `LETTERBOX_DOORBELL_ENTER_DELAY` seconds (default 2, whole seconds 0–5), because some agent apps treat an Enter sent together with the text as part of a paste and never submit it. If your agent's doorbell sits typed but unsent, raise it; if your agent never needs the pause, set it to 0.
+
 ## The Agent Letterbox family
 
 One shared letter store and protocol — four native doorbell adapters, one edition per terminal. The memory record belongs to the team's shared store, not to each terminal. Pick the adapter matching the terminal you already run:
