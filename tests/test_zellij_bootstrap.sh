@@ -285,9 +285,10 @@ fi
 
 # Smoke that register works from env (HERDR-equivalent env vars)
 : > "$box/zellij-agents.tsv"
-ZELLIJ=1 ZELLIJ_PANE_ID="$reg_pane" ZELLIJ_SESSION_NAME="$sess" \
+out="$(env -u LETTERBOX_AGENT ZELLIJ=1 ZELLIJ_PANE_ID="$reg_pane" ZELLIJ_SESSION_NAME="$sess" \
   LETTERBOX_DIR="$box" LETTERBOX_ZELLIJ_REGISTRY="$box/zellij-agents.tsv" \
-  "$letterbox" zellij register beta >/dev/null
+  "$letterbox" zellij register beta)"
+[[ "$out" == *"export LETTERBOX_AGENT=beta"* ]] || { echo "register does not name LETTERBOX_AGENT: $out" >&2; exit 1; }
 grep -q $'^beta\t' "$box/zellij-agents.tsv" || {
   echo 'env-based register failed' >&2
   cat "$box/zellij-agents.tsv" >&2

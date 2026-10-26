@@ -262,6 +262,8 @@ letterbox zellij register planner
 letterbox zellij status
 ```
 
+`register` names the pane for the doorbell only. If the agent in it was not started with `zellij run`, it also needs `LETTERBOX_AGENT=planner` where its commands run; `register` prints that line.
+
 ## Send a live handoff (ack, then result)
 
 ```bash
