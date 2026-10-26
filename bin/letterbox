@@ -317,6 +317,22 @@ zellij_pane_live() {
   '
 }
 
+# Setup runs again whenever an agent is added. Emptying the registry then
+# silenced every agent already running until each one registered again, so
+# keep the rows whose pane is still live and drop only the dead ones.
+keep_live_zellij_registrations() {
+  local registry="$1" tmp line pane session
+  [[ -f "$registry" ]] || { : > "$registry"; return; }
+  tmp="$(mktemp "$(dirname "$registry")/.zellij-agents.tmp.XXXXXX")"
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    pane="$(printf '%s\n' "$line" | cut -f2)"
+    session="$(printf '%s\n' "$line" | cut -f3)"
+    [[ -n "$pane" ]] && zellij_pane_live "$pane" "$session" || continue
+    printf '%s\n' "$line" >> "$tmp"
+  done < "$registry"
+  mv "$tmp" "$registry"
+}
+
 cmd_zellij_register() {
   local agent="${1:?usage: letterbox zellij register <agent>}" registry pane session tmp owner
   need_agent "$agent"
@@ -385,7 +401,7 @@ cmd_zellij_setup() {
   mkdir -p "$BOX" "$BOX/locks" "$(dirname "$DEFAULT_DIR_FILE")" "$launcher_dir"
   cmd_init "${agent_list[@]}" >/dev/null
   printf '%s\n' "$BOX" > "$DEFAULT_DIR_FILE"
-  : > "$BOX/zellij-agents.tsv"
+  keep_live_zellij_registrations "$BOX/zellij-agents.tsv"
   if [[ ! -f "$BOX/zellij-patterns.tsv" ]]; then
     cat > "$BOX/zellij-patterns.tsv" <<'PAT'
 # Optional static fallback: agent<TAB>pane_id<TAB>session_name

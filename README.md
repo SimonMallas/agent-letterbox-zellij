@@ -229,6 +229,8 @@ letterbox zellij setup --agents planner,reviewer,builder,researcher --automatic-
 source "$HOME/.agent-letterbox/env.sh"
 ```
 
+To add an agent later, run setup again with just its name, for example `letterbox zellij setup --agents tester --automatic-doorbells`. Agents that are already running keep their doorbells; only registrations whose pane has closed are cleared.
+
 Omit `--automatic-doorbells` if you want durable mail only (no pane inject). Check:
 
 ```bash

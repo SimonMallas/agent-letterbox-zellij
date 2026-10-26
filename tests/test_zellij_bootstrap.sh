@@ -256,6 +256,16 @@ if ! grep -Fq "unacked delegate in $box/alpha/inbox/" "$dump"; then
 fi
 printf '%s\n' 'registry-first live doorbell: PASS'
 
+# --- setup again to add an agent keeps the running ones (26 Oct) ---
+printf 'ghost\t999999\tno-such-session\t2026-01-01T00:00:00Z\n' >> "$box/zellij-agents.tsv"
+HOME="$tmp/home" LETTERBOX_BIN_DIR="$tmp/bin" LETTERBOX_SKILLS_DIR="$tmp/skills" \
+  "$letterbox" zellij setup --agents gamma --dir "$box" --automatic-doorbells >/dev/null
+grep -q $'^alpha\t'"$reg_pane"$'\t'"$reg_sess"$'\t' "$box/zellij-agents.tsv" \
+  || { echo 'setup dropped a live registration' >&2; cat "$box/zellij-agents.tsv" >&2; exit 1; }
+! grep -q '^ghost' "$box/zellij-agents.tsv" || { echo 'setup kept a dead registration' >&2; exit 1; }
+test -d "$box/gamma/inbox"
+printf '%s\n' 'zellij setup keeps live registrations: PASS'
+
 LETTERBOX_DIR="$box" LETTERBOX_ZELLIJ_REGISTRY="$box/zellij-agents.tsv" \
   "$letterbox" zellij unregister alpha >/dev/null
 if grep -q $'^alpha\t' "$box/zellij-agents.tsv" 2>/dev/null; then
