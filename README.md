@@ -217,6 +217,8 @@ letterbox zellij setup --agents planner,reviewer,builder,researcher --automatic-
 source "$HOME/.agent-letterbox/env.sh"
 ```
 
+To update later, see [Updating](#updating).
+
 ### Option B — Manual Git install
 
 ```bash
@@ -294,6 +296,22 @@ printf '%s\n' 'RESULT: no critical issues; two nits in findings.md.' |
 ```
 
 Only `nack` or final `result` moves the original letter to `processed/`.
+
+## Updating
+
+`letterbox --version` shows the version you have, and [CHANGELOG.md](CHANGELOG.md) says what each version changed. Every agent runs the same `letterbox`, so one update covers the whole team. Your Letterbox, letters, agents and registrations are kept, and running agents use the new version from their next `letterbox` command.
+
+**Installed with the installer (Option A):** run it again:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/SimonMallas/agent-letterbox-zellij/main/install.sh | bash
+```
+
+It says which version you now have. You don't need to run setup again: if your team was set up before v0.5.3, the update also adds the Agent Letterbox skill link that setup has made since then.
+
+**Installed with Git (Option B):** run `git pull` in the folder you cloned. If your team was set up before v0.5.3, run setup once more the way you add an agent (with `--dir` if you used it): it adds the Agent Letterbox skill link and keeps everything else.
+
+**Added only the skill with `npx skills add`:** run `npx skills update`.
 
 ## Using a pre-release checkout
 
