@@ -61,12 +61,15 @@ bounded_cmd() { # $1=seconds, rest=argv
     command -v python3 >/dev/null 2>&1 || return 125
     python3 -c '
 import os, signal, subprocess, sys
+# Read the bound before starting the child, so a bad bound fails with
+# nothing running.
+secs = float(sys.argv[1])
 try:
     p = subprocess.Popen(sys.argv[2:], start_new_session=True)
 except FileNotFoundError:
     sys.exit(127)
 try:
-    rc = p.wait(timeout=float(sys.argv[1]))
+    rc = p.wait(timeout=secs)
 except subprocess.TimeoutExpired:
     try:
         os.killpg(p.pid, signal.SIGKILL)
@@ -92,6 +95,11 @@ command -v python3 >/dev/null 2>&1 || { emit_outcome no_live_surface adapter_una
 # command runs, so a bad value touches no terminal.
 enter_delay="${LETTERBOX_DOORBELL_ENTER_DELAY:-2}"
 [[ "$enter_delay" =~ ^[0-5]$ ]] || { emit_outcome no_live_surface invalid_enter_delay -; exit 0; }
+# Each mux call is bounded at LETTERBOX_DOORBELL_TIMEOUT: whole seconds 1..999,
+# default 1. Checked before any command runs, like the delay: any other value
+# used to leave a mux command running with no limit.
+bound_s="${LETTERBOX_DOORBELL_TIMEOUT:-1}"
+[[ "$bound_s" =~ ^[1-9][0-9]{0,2}$ ]] || { emit_outcome no_live_surface invalid_timeout -; exit 0; }
 
 # Token from letter id tail (8 hex) or hash; never slug/body.
 doorbell_token_for_id() {
@@ -131,8 +139,6 @@ fi
 if [[ -n "$tok" ]]; then
   line="${line} · ${tok}"
 fi
-
-bound_s="${LETTERBOX_DOORBELL_TIMEOUT:-1}"
 
 pane_token() {
   local id="$1"
