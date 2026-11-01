@@ -1642,6 +1642,12 @@ cmd_unlock() {
   rm "$lease" && rmdir "$lock"
   printf 'unlocked: %s\n' "$lock"
 }
+cmd_lint_notes() {
+  need_me
+  command -v python3 >/dev/null 2>&1 || die 'lint-notes requires python3'
+  python3 -I -B "$SCRIPT_DIR/../lib/query/lint_notes.py" --root "$BOX" --agent "$ME" "$@"
+}
+
 cmd_query() {
   command -v python3 >/dev/null 2>&1 || die 'query requires Python 3.9 or newer (python3)'
   python3 -I -B -c 'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)' 2>/dev/null \
@@ -1673,8 +1679,9 @@ case "${1:-}" in
   doorbell-line) shift; cmd_doorbell_line "$@";; doorbell-parse) shift; cmd_doorbell_parse "$@";;
   ring) shift; cmd_ring "$@";;
   query) shift; cmd_query "$@";;
+  lint-notes) shift; cmd_lint_notes "$@";;
   reply) shift; cmd_reply "$@";; file) shift; cmd_file "$@";; done) shift; cmd_done "$@";;
   lock) shift; cmd_lock "$@";; unlock) shift; cmd_unlock "$@";;
   status) shift; cmd_status "$@";; zellij) shift; cmd_zellij "$@";;
-  *) printf 'usage: letterbox {init|send|check|query|read|progress|nudge|ring|doorbell-line|doorbell-parse|token|reply|file|done|lock|unlock|status|zellij|--version} ...\n\nzellij: setup | run | register | unregister | status\n' >&2; exit 2;;
+  *) printf 'usage: letterbox {init|send|check|query|lint-notes|read|progress|nudge|ring|doorbell-line|doorbell-parse|token|reply|file|done|lock|unlock|status|zellij|--version} ...\n\nzellij: setup | run | register | unregister | status\n' >&2; exit 2;;
 esac
