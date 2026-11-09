@@ -99,7 +99,6 @@ message_body() {
 V02_DOORBELL_PREFIX="📬 letterbox doorbell: unacked "
 V02_DOORBELL_TAIL=" — please check"
 DOORBELL_SENDER_RE='^[A-Za-z][A-Za-z0-9._-]{0,31}$'
-BUS_CHECK_STALE_DAYS="${LETTERBOX_CHECK_STALE_DAYS:-14}"
 
 
 bounded_cmd() { # $1=seconds, rest=argv; 124 timeout (runner-owned: a child
@@ -1051,7 +1050,8 @@ cmd_token() { # glance-dismiss a doorbell token: unhandled / filed / unknown
 
 check_stale_secs() {
   local days="${LETTERBOX_CHECK_STALE_DAYS:-14}"
-  printf '%s\n' $((days * 86400))
+  [[ "$days" =~ ^[0-9]{1,5}$ ]] || days=14
+  printf '%s\n' $((10#$days * 86400))
 }
 
 
@@ -1079,6 +1079,8 @@ print_progress_line() { # $1=letter file
   local stamp="$1.ack" note age ep
   [[ -f "$stamp" ]] || return 0
   note="$(awk '/^progress:/{sub(/^progress:[[:space:]]*/, ""); print; exit}' "$stamp" 2>/dev/null || true)"
+  # Notes are untrusted text: never pass terminal control sequences through.
+  note="$(printf '%s' "$note" | LC_ALL=C tr -d '[:cntrl:]' | LC_ALL=C sed $'s/\xc2[\x80-\x9f]//g')"
   [[ -n "$note" ]] || return 0
   if ep="$(progress_epoch "$stamp")"; then
     age="$(format_age "$ep")"
@@ -1243,7 +1245,7 @@ cmd_check() {
   stale_secs="$(check_stale_secs)"
   n=0
   for f in "$dir"/*.md; do
-    [[ -e "$f" ]] || break
+    [[ -e "$f" ]] || continue
     if ! id="$(frontmatter_value "$f" id)"; then
       stem="${f##*/}"; stem="${stem%.md}"
       label="$(display_id "$stem")"
