@@ -9,7 +9,7 @@
 #   2) LETTERBOX_ZELLIJ_PATTERNS (static fallback)
 #      agent<TAB>pane_id<TAB>session_name
 #
-# Submit is opt-in: LETTERBOX_ZELLIJ_SUBMIT=1 injects generic doorbell text
+# By default the doorbell is typed as generic text
 # plus Enter (byte 13) via Zellij 0.44.x:
 #   zellij -s <session> action write-chars --pane-id <id> <text>
 #   zellij -s <session> action write --pane-id <id> 13
@@ -234,8 +234,11 @@ run_zellij() {
   fi
 }
 
-# Input injection is explicit opt-in: Enter can submit unrelated buffer text.
-if [[ "${LETTERBOX_ZELLIJ_SUBMIT:-0}" == 1 ]]; then
+# Typing the line and pressing Enter is the doorbell: without it the agent does
+# not wake. Enter can also submit text already typed in that pane; that risk is
+# accepted. Only an explicit LETTERBOX_ZELLIJ_SUBMIT=0 stops typing, and the agent's own check
+# then warns.
+if [[ "${LETTERBOX_ZELLIJ_SUBMIT:-1}" != 0 ]]; then
   send_ec=0
   run_zellij action write-chars --pane-id "$token" "$line" >/dev/null || send_ec=$?
   if [[ "$send_ec" -ne 0 ]]; then
@@ -261,6 +264,6 @@ if [[ "${LETTERBOX_ZELLIJ_SUBMIT:-0}" == 1 ]]; then
   fi
   emit_outcome submitted - "$token"
 else
-  # Durable mail still lands; without SUBMIT there is no terminal ring.
+  # Typing was switched off with LETTERBOX_ZELLIJ_SUBMIT=0: the letter lands, nobody wakes.
   emit_outcome no_live_surface notify_only -
 fi
