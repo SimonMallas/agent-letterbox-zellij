@@ -50,7 +50,7 @@ zellij -s <session> action write-chars --pane-id <id> '<doorbell>'
 zellij -s <session> action write --pane-id <id> 13
 ```
 
-Without submit, the adapter exits successfully after locating a live target and printing a non-inject message — it does **not** type into the pane.
+With `LETTERBOX_ZELLIJ_SUBMIT=0`, the adapter exits successfully after locating a live target and printing a non-inject message — it does **not** type into the pane.
 
 ## Safety
 

@@ -34,7 +34,7 @@ Letters are operator/user content on disk. The core project never transmits lett
 2. **Untrusted bodies:** Verify unusual, destructive, or identity-sensitive requests out of band before acting.
 3. **No permission expansion:** A letter must never grant an agent tools, paths, or network rights it did not already have.
 4. **Doorbell injection:** The doorbell types into a live pane by default (`LETTERBOX_ZELLIJ_SUBMIT=1`), and can submit unsent terminal text there. `LETTERBOX_ZELLIJ_SUBMIT=0` turns typing off (no ring at all on Zellij, and `check` says so). Use dedicated agent panes only.
-5. **No-submit default:** Without submit, letters still land on disk but **no recipient-side terminal nudge** is performed. Operators must not assume a terminal ring occurred.
+5. **With submit off:** With `LETTERBOX_ZELLIJ_SUBMIT=0`, letters still land on disk but **no recipient-side terminal nudge** is performed. Operators must not assume a terminal ring occurred.
 6. **Shared hosts:** Do not expose Letterbox directories on untrusted multi-user systems without additional access control.
 7. **External intake (if any):** Chat/email/webhooks are entry points, not bus identities. Allowlist sources before publishing letters; unknown senders fail closed; missing allowlist denies all.
 
@@ -64,4 +64,4 @@ If the project is still private, use the same private channel you already use wi
 - Judge completion by **on-disk** reply + archive (and sidecar state), never by model prose alone.
 - Keep doorbell lines generic; never inject task bodies into panes.
 - Prefer live pane+session self-registration over static patterns when identities can collide.
-- Leave `LETTERBOX_ZELLIJ_SUBMIT` unset unless agent panes are dedicated.
+- Set `LETTERBOX_ZELLIJ_SUBMIT=0` unless agent panes are dedicated; unset, the doorbell types.
