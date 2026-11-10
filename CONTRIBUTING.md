@@ -5,7 +5,7 @@
 **Supported**
 
 - Durable Markdown letters, reply-first handling, atomic publication, advisory locks
-- Automatic opt-in Zellij doorbells to live registered panes
+- Automatic Zellij doorbells to live registered panes, typed by default
 - Local Zellij sessions only
 
 **Not in scope**

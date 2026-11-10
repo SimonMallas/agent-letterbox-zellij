@@ -223,7 +223,7 @@ npx skills add SimonMallas/agent-letterbox-zellij
 ```bash
 curl -fsSL https://raw.githubusercontent.com/SimonMallas/agent-letterbox-zellij/main/install.sh | bash
 export PATH="$HOME/.local/bin:$PATH"
-letterbox zellij setup --agents planner,reviewer,builder,researcher --automatic-doorbells
+letterbox zellij setup --agents planner,reviewer,builder,researcher
 source "$HOME/.agent-letterbox/env.sh"
 ```
 
@@ -237,13 +237,13 @@ git clone https://github.com/SimonMallas/agent-letterbox-zellij.git \
 cd ~/src/agent-letterbox-zellij
 chmod +x bin/letterbox adapters/*.sh tests/*.sh
 export PATH="$PWD/bin:$PATH"
-letterbox zellij setup --agents planner,reviewer,builder,researcher --automatic-doorbells
+letterbox zellij setup --agents planner,reviewer,builder,researcher
 source "$HOME/.agent-letterbox/env.sh"
 ```
 
-To add an agent later, run setup again with just its name, for example `letterbox zellij setup --agents tester --automatic-doorbells`. Agents that are already running keep their doorbells; only registrations whose pane has closed are cleared.
+To add an agent later, run setup again with just its name, for example `letterbox zellij setup --agents tester`. Agents that are already running keep their doorbells; only registrations whose pane has closed are cleared.
 
-Omit `--automatic-doorbells` if you want durable mail only (no pane inject). Check:
+For durable mail only (no pane inject), set `LETTERBOX_ZELLIJ_SUBMIT=0`. Check:
 
 ```bash
 letterbox --version

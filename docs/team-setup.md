@@ -14,7 +14,7 @@ This is the standard Agent Letterbox setup for a live **Zellij** agent team (loc
 chmod +x bin/letterbox adapters/*.sh tests/*.sh
 export PATH="$PWD/bin:$PATH"
 
-letterbox zellij setup --agents planner,reviewer,builder,researcher --automatic-doorbells
+letterbox zellij setup --agents planner,reviewer,builder,researcher
 source ~/.agent-letterbox/env.sh
 ```
 
@@ -30,12 +30,12 @@ AGENT-LETTERBOX.md        # startup/resume instruction snippet
 
 Also links `~/.local/bin/letterbox` and `~/.agents/skills/agent-letterbox`.
 
-`--automatic-doorbells` (alias `--submit`) enables `LETTERBOX_ZELLIJ_SUBMIT=1`. Omit it for durable-only delivery (no inject).
+Setup writes `LETTERBOX_ZELLIJ_SUBMIT=1`. For durable-only delivery (no inject), set `LETTERBOX_ZELLIJ_SUBMIT=0`; `check` then warns `doorbell: typing is off`. The old `--automatic-doorbells` flag (alias `--submit`) is still accepted and changes nothing.
 
 Use another shared location when needed:
 
 ```bash
-letterbox zellij setup --agents planner,reviewer --dir /shared/letterbox --automatic-doorbells
+letterbox zellij setup --agents planner,reviewer --dir /shared/letterbox
 source /shared/letterbox/env.sh
 ```
 
@@ -125,7 +125,7 @@ See [lifecycle.md](lifecycle.md) for the full state machine.
 
 ## Safety
 
-Automatic terminal input is intentionally opt-in. `LETTERBOX_ZELLIJ_SUBMIT=1` may submit text already waiting in a target pane buffer. Use dedicated agent panes only. The doorbell contains no task content.
+Automatic terminal input is the default: every letter rings, and setup writes `LETTERBOX_ZELLIJ_SUBMIT=1`. It may submit text already waiting in a target pane buffer, so use dedicated agent panes only. The doorbell contains no task content.
 
 ## Validate
 

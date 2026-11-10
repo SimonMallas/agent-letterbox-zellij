@@ -12,7 +12,7 @@ letter written to inbox
 → agent checks its durable inbox (must still check when submit is off)
 ```
 
-The terminal gets a ring only when submit is on; the inbox always keeps the message. Doorbell delivery is best-effort. The letter on disk is the record.
+The terminal gets a ring when submit is on, which is the default; the inbox always keeps the message. Doorbell delivery is best-effort. The letter on disk is the record.
 
 ## Platform difference (critical)
 
@@ -32,16 +32,16 @@ The terminal gets a ring only when submit is on; the inbox always keeps the mess
 
 Pane ids accept numeric (`0`) or token form (`terminal_0`); the adapter normalizes to Zellij’s `--pane-id` form. Registration refuses to silently assign the same live pane+session pair to two agent identities.
 
-## Enable automatic agent input
+## Automatic agent input (the default)
 
-To inject the standardized doorbell and Enter into the live pane:
+Every letter rings. By default the adapter types the standardized doorbell and Enter into the live pane. With typing refused, no ring reaches the pane (`check` warns `doorbell: typing is off`):
 
 ```bash
 # Typing is the default (setup writes this for you); refuse it with:
 export LETTERBOX_ZELLIJ_SUBMIT=0
 ```
 
-Setup flag `--automatic-doorbells` (alias `--submit`) turns this on in the generated environment.
+Setup writes `LETTERBOX_ZELLIJ_SUBMIT=1` into the generated environment. The old `--automatic-doorbells` flag (alias `--submit`) is still accepted and changes nothing.
 
 Injection uses (Zellij 0.44.x):
 

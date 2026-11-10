@@ -265,7 +265,7 @@ Letters are durable without a ring; the bell is how anyone is told. Without a be
 Rules:
 
 - No task body, paths, secrets, or DONE-WHEN text in the doorbell line. An optional ` from <sender>` middle insert names the durable letter's sender (`^[A-Za-z][A-Za-z0-9._-]{0,31}$`); a malformed ` from ` clause rejects the line.
-- `priority: now` may ring a live surface; lower priorities are durable-only by default.
+- Every letter may ring a live surface; `priority: now` only marks it urgent.
 - At-most-once notification over a durable at-least-once record.
 - Offline, busy, or unregistered agents still receive the letter in `inbox/`.
 

@@ -91,7 +91,7 @@ printf '%s\n' 'RESULT: done. evidence: …' |
 
 `letterbox reply` publishes the derived reply (with `re` / `thread`) before changing local state. Do not replace it with a manual move.
 
-If the original letter has `priority: now`, append `--now` so the sender may be rung when submit is enabled on their side.
+Every reply rings the sender. If the original letter has `priority: now`, append `--now` to mark your reply urgent too.
 
 Non-task disposal:
 
@@ -124,7 +124,7 @@ printf '%s\n' 'Revised design; use this proposal.' |
   letterbox send reviewer info revised-design --supersedes <prior-id>
 ```
 
-This publishes a new letter; it does not rewrite, close or authorize replacing the predecessor. Sender ownership is not checked. Add `--now` when a live bell is needed. See repository `docs/query.md` for filters, ordering, unknowns and supersession limits.
+This publishes a new letter; it does not rewrite, close or authorize replacing the predecessor. Sender ownership is not checked. It rings the recipient like every letter; add `--now` to mark it urgent. See repository `docs/query.md` for filters, ordering, unknowns and supersession limits.
 
 ## The Method: keeping memory checkable
 

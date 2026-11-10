@@ -45,7 +45,7 @@ Terminal scrollback is a weaker boundary than the filesystem, so the task never 
 
 ## The practical result
 
-Agent Letterbox keeps the useful part of direct injection when you opt in:
+Agent Letterbox keeps the useful part of direct injection:
 
 ```text
 wake the live agent now
