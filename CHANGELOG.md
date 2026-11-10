@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.7.1] — unreleased (zellij edition)
+## [0.7.1] — 2026-11-10 (zellij edition)
 
 - `check` ignores a `LETTERBOX_CHECK_STALE_DAYS` that is not a whole number (such as `08`, `1.5` or a word) instead of aborting, and a broken link that sorts first in the inbox no longer hides every letter after it.
 - A progress note from another agent is shown without terminal control characters.
