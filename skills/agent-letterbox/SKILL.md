@@ -12,7 +12,7 @@ license: MIT
 
 ## Core rule
 
-A Letterbox message is the durable work item. A doorbell is only the fast signal that tells a live agent to check its inbox — and on Zellij it is injected only when `LETTERBOX_ZELLIJ_SUBMIT=1`.
+A Letterbox message is the durable work item. A doorbell is the fast signal that tells a live agent to check its inbox — every letter rings, and on Zellij typing is on by default (`LETTERBOX_ZELLIJ_SUBMIT=0` turns it off, and `check` says so).
 
 ```text
 📬 letterbox doorbell: unacked <type> in <letterbox>/<agent>/inbox/ — please check
@@ -183,4 +183,4 @@ Prefer `printf '%s\n' '…' | letterbox …`. Avoid unquoted heredocs when the b
 - `letterbox progress <id> <note>` — ACK sidecar; shown on check
 - `letterbox nudge <id>` — re-ring open letter only
 - Doorbell token after `please check`; never slug/body
-- Without LETTERBOX_ZELLIJ_SUBMIT=1: durable only, no terminal ring
+- Typing is the default (LETTERBOX_ZELLIJ_SUBMIT=1 from setup); with =0: durable only, no terminal ring, and `check` warns

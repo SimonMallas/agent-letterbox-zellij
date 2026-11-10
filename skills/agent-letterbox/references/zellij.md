@@ -8,7 +8,7 @@ Lookup order:
    Records `agent`, `ZELLIJ_PANE_ID`, and `ZELLIJ_SESSION_NAME`.
 2. Static patterns (`LETTERBOX_ZELLIJ_PATTERNS`)
 
-Delivery (when `LETTERBOX_ZELLIJ_SUBMIT=1`):
+Delivery (typing is the default; `LETTERBOX_ZELLIJ_SUBMIT=0` turns it off):
 
 ```bash
 zellij -s <session> action write-chars --pane-id <pane> '<generic doorbell>'

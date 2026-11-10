@@ -16,7 +16,7 @@ The terminal gets a ring only when submit is on; the inbox always keeps the mess
 
 ## Platform difference (critical)
 
-**Without `LETTERBOX_ZELLIJ_SUBMIT=1`, a durable letter is delivered but no recipient-side terminal nudge occurs.** Unlike some sibling adapters that still surface a status-line or toast when inject is off, the Zellij adapter only prints that a live target was found. Operators and agents must rely on inbox scans unless they deliberately enable submit on dedicated panes.
+**With `LETTERBOX_ZELLIJ_SUBMIT=0`, a durable letter is delivered but no recipient-side terminal nudge occurs** — the only edition with no notification fallback — and `check` warns `doorbell: typing is off`. Typing is the default (setup writes `LETTERBOX_ZELLIJ_SUBMIT=1`); it is meant for dedicated agent panes.
 
 ## Lookup order
 
@@ -37,7 +37,8 @@ Pane ids accept numeric (`0`) or token form (`terminal_0`); the adapter normaliz
 To inject the standardized doorbell and Enter into the live pane:
 
 ```bash
-export LETTERBOX_ZELLIJ_SUBMIT=1
+# Typing is the default (setup writes this for you); refuse it with:
+export LETTERBOX_ZELLIJ_SUBMIT=0
 ```
 
 Setup flag `--automatic-doorbells` (alias `--submit`) turns this on in the generated environment.
@@ -54,7 +55,7 @@ Without submit, the adapter exits successfully after locating a live target and 
 ## Safety
 
 - Doorbell text is generic; no task body, paths, or secrets.
-- `LETTERBOX_ZELLIJ_SUBMIT=1` injects into a live agent TUI — dedicated panes only.
+- Typing injects into a live agent TUI by default — dedicated panes only; `LETTERBOX_ZELLIJ_SUBMIT=0` turns it off.
 - Doorbell success means a wake-up was submitted to a verified live target — not that the agent read or handled the letter.
 - If a safe live target cannot be verified, Letterbox prefers silent durable delivery over risky pane injection.
 

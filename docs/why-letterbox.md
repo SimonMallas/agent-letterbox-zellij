@@ -6,7 +6,7 @@ Agent Letterbox deliberately uses a different split:
 
 ```text
 Durable task content → letter on disk
-Live wake-up         → short generic doorbell in the terminal (the bell is how anyone is told; on Zellij the ring requires LETTERBOX_ZELLIJ_SUBMIT=1)
+Live wake-up         → short generic doorbell in the terminal (the bell is how anyone is told; on Zellij typing is the default, LETTERBOX_ZELLIJ_SUBMIT=0 turns it off)
 ```
 
 ## The direct-injection model
@@ -28,7 +28,7 @@ write full task to Agent B's inbox
 → Agent B ACKs (work stays visible), then RESULTs (archives)
 ```
 
-On Zellij, the inject step requires `LETTERBOX_ZELLIJ_SUBMIT=1`. Without it, the letter still waits safely; there is simply no terminal nudge. The doorbell is best-effort; the letter is the record.
+On Zellij, typing is the default (`LETTERBOX_ZELLIJ_SUBMIT=1`, written by setup). With `=0`, the letter still waits safely; there is simply no terminal nudge, and `check` says so. The doorbell is best-effort; the letter is the record.
 
 ## Why separate the letter from the bell?
 

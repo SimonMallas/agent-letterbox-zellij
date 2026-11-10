@@ -287,7 +287,7 @@ is refused as `invalid_enter_delay` before a mux call. An agent terminal app tha
 detects pastes treats an Enter sent with the text as part of the paste, and the line is
 never submitted.
 
-The Zellij adapter implements this contract for live terminal agents (live pane+session registry first, optional static pane/session patterns as fallback; local Zellij only). Without LETTERBOX_ZELLIJ_SUBMIT=1, a durable letter is still delivered but no recipient-side terminal nudge is injected. The shared filesystem remains the universal transport.
+The Zellij adapter implements this contract for live terminal agents (live pane+session registry first, optional static pane/session patterns as fallback; local Zellij only). Every letter rings, and the adapter types by default (setup writes LETTERBOX_ZELLIJ_SUBMIT=1). With LETTERBOX_ZELLIJ_SUBMIT=0 a durable letter is still delivered but no recipient-side terminal nudge is injected, and `check` warns `doorbell: typing is off`. The shared filesystem remains the universal transport.
 
 ## Compatibility
 

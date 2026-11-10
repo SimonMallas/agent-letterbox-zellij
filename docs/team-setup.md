@@ -2,11 +2,11 @@
 
 This is the standard Agent Letterbox setup for a live **Zellij** agent team (local only).
 
-**You control Zellij.** Create whatever tabs and panes fit the task. Letterbox never creates your product layout for you during normal use; it registers the pane you launch each agent in, then rings that pane when mail arrives if `LETTERBOX_ZELLIJ_SUBMIT=1`. Without the ring, the letter is durable and nobody is told.
+**You control Zellij.** Create whatever tabs and panes fit the task. Letterbox never creates your product layout for you during normal use; it registers the pane you launch each agent in, then rings that pane when mail arrives — every letter rings, and typing is the default (`LETTERBOX_ZELLIJ_SUBMIT=1` from setup). With the ring off (`=0`), the letter is durable and nobody is told, and `check` warns.
 
 ## Platform difference
 
-**Without `LETTERBOX_ZELLIJ_SUBMIT=1`, durable letters are still written to the recipient inbox, but no recipient-side terminal nudge is injected.** The adapter only reports that a live target was found. Enable `--automatic-doorbells` only for dedicated agent panes if you want the terminal to receive a ring.
+**With `LETTERBOX_ZELLIJ_SUBMIT=0`, durable letters are still written to the recipient inbox, but no recipient-side terminal nudge is injected** (and `check` warns `doorbell: typing is off`). Typing is the default on dedicated agent panes; setup still accepts `--automatic-doorbells` for older runbooks.
 
 ## One-time setup
 

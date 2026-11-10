@@ -33,7 +33,7 @@ Letters are operator/user content on disk. The core project never transmits lett
 1. **Permissions:** Restrict `LETTERBOX_DIR` to users/processes that should coordinate (e.g. `0700` / group-only as appropriate).
 2. **Untrusted bodies:** Verify unusual, destructive, or identity-sensitive requests out of band before acting.
 3. **No permission expansion:** A letter must never grant an agent tools, paths, or network rights it did not already have.
-4. **Doorbell injection:** Opt-in terminal submit (`LETTERBOX_ZELLIJ_SUBMIT=1`) can inject keystrokes into a live pane; leave it off unless you accept that risk. Use dedicated agent panes only.
+4. **Doorbell injection:** The doorbell types into a live pane by default (`LETTERBOX_ZELLIJ_SUBMIT=1`), and can submit unsent terminal text there. `LETTERBOX_ZELLIJ_SUBMIT=0` turns typing off (no ring at all on Zellij, and `check` says so). Use dedicated agent panes only.
 5. **No-submit default:** Without submit, letters still land on disk but **no recipient-side terminal nudge** is performed. Operators must not assume a terminal ring occurred.
 6. **Shared hosts:** Do not expose Letterbox directories on untrusted multi-user systems without additional access control.
 7. **External intake (if any):** Chat/email/webhooks are entry points, not bus identities. Allowlist sources before publishing letters; unknown senders fail closed; missing allowlist denies all.

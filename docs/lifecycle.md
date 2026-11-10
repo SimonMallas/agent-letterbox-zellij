@@ -61,7 +61,7 @@ v0.3 emit (token after `please check`):
 
 ## Zellij submit-off truth
 
-Without `LETTERBOX_ZELLIJ_SUBMIT=1`, durable mail still lands and **no** recipient terminal ring is injected. Unlike tmux status-line or Herdr toast, Zellij has no alternate visibility path when submit is off.
+With `LETTERBOX_ZELLIJ_SUBMIT=0`, durable mail still lands and **no** recipient terminal ring is injected, and `check` warns `doorbell: typing is off`. Unlike tmux status-line or Herdr toast, Zellij has no alternate visibility path when typing is off. Typing is the default.
 
 ## Guard rails
 

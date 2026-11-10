@@ -38,7 +38,7 @@ No database, no embeddings, no service — the envelope is the memory, and query
 
 The doorbell is deliberately the smallest part: one contentless line that tells a live
 agent to check its inbox. The letter is the message; the ring is only latency. **This edition
-rings it inside your Zellij panes** (terminal ring requires `LETTERBOX_ZELLIJ_SUBMIT=1`).
+rings it inside your Zellij panes** (the ring types by default; `LETTERBOX_ZELLIJ_SUBMIT=0` turns it off).
 
 - **Status:** active development. Tagged releases with semver; history in [CHANGELOG.md](CHANGELOG.md).
 - **License:** MIT ([LICENSE](LICENSE)).
@@ -61,7 +61,7 @@ rings it inside your Zellij panes** (terminal ring requires `LETTERBOX_ZELLIJ_SU
 
 ## v0.3 at a glance
 
-Durable letters remain the record. v0.3 adds addressable doorbells (` · <8-hex>` after `please check`), `nudge`, summary `check` + `read`, optional ACK `progress`, and read-only `check --thread`. The bell is the wake-up; without `LETTERBOX_ZELLIJ_SUBMIT=1` there is **no** terminal ring, so mail is a dead drop until the pane is read.
+Durable letters remain the record. v0.3 adds addressable doorbells (` · <8-hex>` after `please check`), `nudge`, summary `check` + `read`, optional ACK `progress`, and read-only `check --thread`. The bell is the wake-up. Typing is on by default; with `LETTERBOX_ZELLIJ_SUBMIT=0` there is no terminal ring and `check` warns `doorbell: typing is off`.
 
 ## What it is
 
@@ -80,7 +80,7 @@ The agent wakes, picks up the real task from disk, replies, and keeps the work f
 
 ### Platform difference (read this)
 
-**Without `LETTERBOX_ZELLIJ_SUBMIT=1`, a durable letter is still delivered to the recipient's inbox, but no recipient-side terminal ring occurs.** The adapter only reports that a live target was found. Agents must still check their inbox at startup, after tasks, and at checkpoints. Enable `--automatic-doorbells` (or export `LETTERBOX_ZELLIJ_SUBMIT=1`) only on dedicated agent panes if you want the terminal to receive a ring.
+**With `LETTERBOX_ZELLIJ_SUBMIT=0`, a durable letter is still delivered to the recipient's inbox, but no recipient-side terminal ring occurs** (and `check` warns `doorbell: typing is off`). Agents must still check their inbox at startup, after tasks, and at checkpoints. Typing is the default; setup writes `LETTERBOX_ZELLIJ_SUBMIT=1` for you on dedicated agent panes, and still accepts `--automatic-doorbells` for older runbooks.
 
 Before pressing Enter, Letterbox waits `LETTERBOX_DOORBELL_ENTER_DELAY` seconds (default 2, whole seconds 0–5), because some agent apps treat an Enter sent together with the text as part of a paste and never submit it. If your agent's doorbell sits typed but unsent, raise it; if your agent never needs the pause, set it to 0.
 
@@ -91,7 +91,7 @@ One shared letter store and protocol — four native doorbell adapters, one edit
 - **[cmux](https://github.com/SimonMallas/agent-letterbox-cmux)** — primary entry point
 - [tmux](https://github.com/SimonMallas/agent-letterbox-tmux)
 - [Herdr](https://github.com/SimonMallas/agent-letterbox-herdr)
-- [Zellij](https://github.com/SimonMallas/agent-letterbox-zellij) — terminal ring requires `LETTERBOX_ZELLIJ_SUBMIT=1`
+- [Zellij](https://github.com/SimonMallas/agent-letterbox-zellij) — the ring types by default; `LETTERBOX_ZELLIJ_SUBMIT=0` turns it off
 
 You are reading the **Zellij** edition.
 
@@ -99,11 +99,11 @@ You are reading the **Zellij** edition.
 
 Without coordination, a multi-agent workflow means juggling panes, copying task text, remembering who owns what, and hoping an agent eventually sees a message.
 
-Directly injecting the full task into another terminal is fast, but the terminal becomes the only message record. Agent Letterbox puts the work in a durable, inspectable letter, then rings so someone is told. Without a bell, mail is a dead drop. On Zellij the ring requires `LETTERBOX_ZELLIJ_SUBMIT=1`.
+Directly injecting the full task into another terminal is fast, but the terminal becomes the only message record. Agent Letterbox puts the work in a durable, inspectable letter, then rings so someone is told. Without a bell, mail is a dead drop. On Zellij the ring types by default; `LETTERBOX_ZELLIJ_SUBMIT=0` turns it off.
 
 ```text
 full task    → durable inbox letter
-live wake-up → short generic doorbell (only when SUBMIT=1)
+live wake-up → short generic doorbell (the default; SUBMIT=0 turns it off)
 reply        → sender inbox
 archive      → recipient processed history
 ```
