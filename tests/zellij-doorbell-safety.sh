@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Mock-backed proof that adapters/zellij.sh never injects input into a live pane
-# unless the caller explicitly opts in via LETTERBOX_ZELLIJ_SUBMIT=1.
+# Mock-backed proof that adapters/zellij.sh types the doorbell into the resolved
+# pane by default, and that only LETTERBOX_ZELLIJ_SUBMIT=0 stops it.
 #
 # Runs anywhere: Zellij itself is never required. The adapter resolves its binary
 # through ZELLIJ_BIN_PATH, so we point that at a mock that logs every call.
@@ -10,6 +10,7 @@
 # exits 0 would make the adapter defer at pane lookup, and the refusal
 # assertions below would then pass for a reason unrelated to the submit gate.
 set -uo pipefail
+unset LETTERBOX_ZELLIJ_SUBMIT # each case below sets it on purpose; an inherited value must not decide one
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 adapter="$root/adapters/zellij.sh"
@@ -73,9 +74,9 @@ before=$fails
 LETTERBOX_ZELLIJ_SUBMIT=1 run_adapter
 grep -q "deferred" "$work/stderr" && fail 'adapter deferred — the mock pane was NOT found, so the refusal checks above prove nothing'
 grep -qE "action write-chars --pane-id terminal_${PANE_NUM} " "$MOCK_LOG" \
-  || fail "opt-in did not write-chars to terminal_${PANE_NUM} (numeric->terminal_ translation or awk matcher not exercised)"
+  || fail "explicit 1 did not write-chars to terminal_${PANE_NUM} (numeric->terminal_ translation or awk matcher not exercised)"
 grep -qE "action write --pane-id terminal_${PANE_NUM} 13$" "$MOCK_LOG" \
-  || fail 'opt-in sent text but never sent Enter as byte 13'
+  || fail 'explicit 1 sent text but never sent Enter as byte 13'
 (( fails == before )) && printf 'PASS: explicit 1 injects into the resolved terminal_%s pane\n' "$PANE_NUM"
 
 if (( fails > 0 )); then
