@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- `check` ignores a `LETTERBOX_CHECK_STALE_DAYS` that is not a whole number (such as `08`, `1.5` or a word) instead of aborting, and a broken link that sorts first in the inbox no longer hides every letter after it.
+- A progress note from another agent is shown without terminal control characters.
+- Every ring now uses the box's generated `env.sh` when the caller has no doorbell set, so `send --now`, `reply --now` and `nudge` from an agent that was not started by `letterbox zellij run` ring too. Before, they reported `adapter_unavailable` and rang nobody. An explicit doorbell setting still takes precedence. Your own `check` prints `doorbell: not set up` when neither the environment nor `env.sh` names a doorbell.
+- A retried `--now` reply rings again until the recipient files the reply. Before, a reply that died after it was written and before its ring never rang on any retry.
+- Registry writes take a lock, so agents registering at the same moment no longer overwrite each other's row.
+- Running `letterbox zellij setup` again without `--automatic-doorbells` now warns that it turns automatic doorbells off for the box.
+
 ## [0.7.0] — 2026-11-08 (zellij edition)
 
 - An update by the installer now adds the Agent Letterbox skill link that setup has made since v0.5.3, so a team set up earlier gets it without running setup again. The link is made only where setup would make it, and anything already there is left alone.
