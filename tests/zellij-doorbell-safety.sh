@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Mock-backed proof that adapters/zellij.sh never injects input into a live pane
-# unless the caller explicitly opts in via LETTERBOX_ZELLIJ_SUBMIT=1.
+# Mock-backed proof that adapters/zellij.sh types the doorbell into the resolved
+# pane by default, and that only LETTERBOX_ZELLIJ_SUBMIT=0 stops it.
 #
 # Runs anywhere: Zellij itself is never required. The adapter resolves its binary
 # through ZELLIJ_BIN_PATH, so we point that at a mock that logs every call.
@@ -10,6 +10,7 @@
 # exits 0 would make the adapter defer at pane lookup, and the refusal
 # assertions below would then pass for a reason unrelated to the submit gate.
 set -uo pipefail
+unset LETTERBOX_ZELLIJ_SUBMIT # each case below sets it on purpose; an inherited value must not decide one
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 adapter="$root/adapters/zellij.sh"
@@ -52,30 +53,31 @@ injected() { grep -qE 'action (write-chars|write) ' "$MOCK_LOG"; }
 fails=0
 fail() { printf 'FAIL: %s\n' "$*" >&2; cat "$MOCK_LOG" >&2; fails=$((fails+1)); }
 
-# --- Default (unset): must never inject ---
+# --- Default (unset): the doorbell is typed into the pane, then Enter ---
 unset LETTERBOX_ZELLIJ_SUBMIT || true
 run_adapter
-injected && fail 'zellij action write-chars/write called without LETTERBOX_ZELLIJ_SUBMIT=1'
 grep -q 'action list-panes' "$MOCK_LOG" || fail 'adapter never queried list-panes — mock not reached'
-(( fails == 0 )) && printf 'PASS: no input injection without opt-in\n'
+grep -qE "action write-chars --pane-id terminal_${PANE_NUM} " "$MOCK_LOG" || fail 'the default did not type the doorbell'
+grep -qE "action write --pane-id terminal_${PANE_NUM} 13$" "$MOCK_LOG" || fail 'the default typed but never sent Enter'
+(( fails == 0 )) && printf 'PASS: the doorbell is typed by default\n'
 
-# --- Explicit 0: same ---
+# --- Explicit 0: the only way to stop typing ---
 before=$fails
 LETTERBOX_ZELLIJ_SUBMIT=0 run_adapter
 injected && fail 'zellij injected with LETTERBOX_ZELLIJ_SUBMIT=0'
-(( fails == before )) && printf 'PASS: explicit 0 also refuses\n'
+(( fails == before )) && printf 'PASS: explicit 0 stops typing\n'
 
-# --- Opt-in: MUST inject, and MUST prove the mock pane was actually found. ---
+# --- Explicit 1: MUST inject, and MUST prove the mock pane was actually found. ---
 # Without this the two checks above could both pass because the adapter deferred
 # at pane lookup and never reached the gate at all.
 before=$fails
 LETTERBOX_ZELLIJ_SUBMIT=1 run_adapter
 grep -q "deferred" "$work/stderr" && fail 'adapter deferred — the mock pane was NOT found, so the refusal checks above prove nothing'
 grep -qE "action write-chars --pane-id terminal_${PANE_NUM} " "$MOCK_LOG" \
-  || fail "opt-in did not write-chars to terminal_${PANE_NUM} (numeric->terminal_ translation or awk matcher not exercised)"
+  || fail "explicit 1 did not write-chars to terminal_${PANE_NUM} (numeric->terminal_ translation or awk matcher not exercised)"
 grep -qE "action write --pane-id terminal_${PANE_NUM} 13$" "$MOCK_LOG" \
-  || fail 'opt-in sent text but never sent Enter as byte 13'
-(( fails == before )) && printf 'PASS: explicit opt-in injects into the resolved terminal_%s pane\n' "$PANE_NUM"
+  || fail 'explicit 1 sent text but never sent Enter as byte 13'
+(( fails == before )) && printf 'PASS: explicit 1 injects into the resolved terminal_%s pane\n' "$PANE_NUM"
 
 if (( fails > 0 )); then
   printf 'zellij-doorbell-safety test: FAIL (%d)\n' "$fails" >&2

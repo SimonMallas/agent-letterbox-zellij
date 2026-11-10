@@ -99,7 +99,6 @@ message_body() {
 V02_DOORBELL_PREFIX="📬 letterbox doorbell: unacked "
 V02_DOORBELL_TAIL=" — please check"
 DOORBELL_SENDER_RE='^[A-Za-z][A-Za-z0-9._-]{0,31}$'
-BUS_CHECK_STALE_DAYS="${LETTERBOX_CHECK_STALE_DAYS:-14}"
 
 
 bounded_cmd() { # $1=seconds, rest=argv; 124 timeout (runner-owned: a child
@@ -323,6 +322,7 @@ zellij_pane_live() {
 keep_live_zellij_registrations() {
   local registry="$1" tmp line pane session
   [[ -f "$registry" ]] || { : > "$registry"; return; }
+  acquire_lifecycle_lock "$registry"
   tmp="$(mktemp "$(dirname "$registry")/.zellij-agents.tmp.XXXXXX")"
   while IFS= read -r line || [[ -n "$line" ]]; do
     pane="$(printf '%s\n' "$line" | cut -f2)"
@@ -331,6 +331,7 @@ keep_live_zellij_registrations() {
     printf '%s\n' "$line" >> "$tmp"
   done < "$registry"
   mv "$tmp" "$registry"
+  release_lifecycle_lock
 }
 
 cmd_zellij_register() {
@@ -346,15 +347,18 @@ cmd_zellij_register() {
   mkdir -p "$BOX/$agent/inbox" "$BOX/$agent/processed" "$BOX/locks"
   registry="$(zellij_registry_path)"
   mkdir -p "$(dirname "$registry")"
+  # One writer at a time: registration and cleanup both read-modify-write this file.
+  acquire_lifecycle_lock "$registry"
   if [[ -f "$registry" ]]; then
     owner="$(awk -F '\t' -v pane="$pane" -v sess="$session" '$2 == pane && $3 == sess { print $1; exit }' "$registry")"
-    [[ -z "$owner" || "$owner" == "$agent" ]] || die "pane $pane in session $session is already registered to $owner"
+    [[ -z "$owner" || "$owner" == "$agent" ]] || { release_lifecycle_lock; die "pane $pane in session $session is already registered to $owner"; }
   fi
   tmp="$(mktemp "$(dirname "$registry")/.zellij-agents.tmp.XXXXXX")"
   [[ -f "$registry" ]] && awk -F '\t' -v agent="$agent" '$1 != agent { print }' "$registry" > "$tmp"
   # agent<TAB>pane_id<TAB>session_name<TAB>registered_at
   printf '%s\t%s\t%s\t%s\n' "$agent" "$pane" "$session" "$(now)" >> "$tmp"
   mv "$tmp" "$registry"
+  release_lifecycle_lock
   printf 'registered: %s → pane %s (session %s)\n' "$agent" "$pane" "$session"
   # The registry names the pane for the doorbell. The agent's own commands
   # (check, file, reply) still need its name; `zellij run` exports it.
@@ -374,14 +378,16 @@ cmd_zellij_unregister() {
   need_agent "$agent"
   registry="$(zellij_registry_path)"
   [[ -f "$registry" ]] || { printf 'no zellij registration for %s\n' "$agent"; return; }
+  acquire_lifecycle_lock "$registry"
   tmp="$(mktemp "$(dirname "$registry")/.zellij-agents.tmp.XXXXXX")"
   awk -F '\t' -v agent="$agent" '$1 != agent { print }' "$registry" > "$tmp"
   mv "$tmp" "$registry"
+  release_lifecycle_lock
   printf 'unregistered: %s\n' "$agent"
 }
 
 cmd_zellij_setup() {
-  local agents='' setup_dir="$HOME/.agent-letterbox" submit=false
+  local agents='' setup_dir="$HOME/.agent-letterbox"
   local skill_source="$SCRIPT_DIR/../skills/agent-letterbox"
   local skills_dir="${LETTERBOX_SKILLS_DIR:-$HOME/.agents/skills}" skill_target
   local launcher_dir="${LETTERBOX_BIN_DIR:-$HOME/.local/bin}" launcher_target
@@ -389,7 +395,7 @@ cmd_zellij_setup() {
     case "$1" in
       --agents) agents="${2:?missing comma-separated agent list}"; shift;;
       --dir) setup_dir="${2:?missing directory}"; shift;;
-      --submit|--automatic-doorbells) submit=true;;
+      --submit|--automatic-doorbells) ;; # typing is always on; kept so old commands still work
       *) die "usage: letterbox zellij setup --agents planner,reviewer,builder,researcher [--dir <path>] [--automatic-doorbells]";;
     esac
     shift
@@ -457,7 +463,7 @@ export LETTERBOX_ZELLIJ_REGISTRY='$BOX/zellij-agents.tsv'
 export LETTERBOX_ZELLIJ_PATTERNS='$BOX/zellij-patterns.tsv'
 export AGENT_LETTERBOX_SKILL='$skill_target'
 EOF
-  [[ "$submit" == true ]] && printf 'export LETTERBOX_ZELLIJ_SUBMIT=1\n' >> "$BOX/env.sh"
+  printf 'export LETTERBOX_ZELLIJ_SUBMIT=1\n' >> "$BOX/env.sh"
   cat > "$BOX/AGENT-LETTERBOX.md" <<'EOF'
 # Agent Letterbox startup rule (Zellij)
 
@@ -483,7 +489,7 @@ letterbox check
 ```
 
 For actionable letters, use `letterbox reply` with body text piped on stdin.
-Use `--now` on a reply only when the original letter priority is `now`.
+Every letter and reply rings the recipient; `--now` only marks it urgent.
 
 A letter from Agent Letter Bridge is a person writing from a phone, Slack or
 Discord. `letterbox reply` cannot reach them; answer with
@@ -498,7 +504,6 @@ EOF
   printf 'Source the environment:\n  source %s/env.sh\n' "$BOX"
   printf 'In each agent pane, launch with:\n'
   printf '  letterbox zellij run <agent-id> -- <agent-command>\n'
-  [[ "$submit" == true ]] || printf 'Automatic input is off. Re-run with --automatic-doorbells to enable it.\n'
 }
 
 cmd_zellij_run() {
@@ -542,11 +547,40 @@ cmd_init() {
   printf 'initialized letterbox: %s\n' "$BOX"
 }
 
+# An agent that was not started by `zellij run` has none of the box's doorbell
+# settings, and its rings reached nobody. Use the box's own generated settings
+# when the caller supplied none; an explicit setting stays authoritative.
+load_box_doorbell() {
+  [[ -z "${LETTERBOX_DOORBELL:-}" && -f "$BOX/env.sh" ]] || return 0
+  local box="$BOX" submit_set="${LETTERBOX_ZELLIJ_SUBMIT+set}" submit="${LETTERBOX_ZELLIJ_SUBMIT:-}"
+  # shellcheck disable=SC1090
+  source "$BOX/env.sh"
+  export LETTERBOX_DIR="$box"
+  # A typing setting the caller made wins over the file, as check reports it.
+  [[ -z "$submit_set" ]] || export LETTERBOX_ZELLIJ_SUBMIT="$submit"
+}
+
+# One line on the agent's own check when no doorbell can ring from here.
+doorbell_line() {
+  local submit="${LETTERBOX_ZELLIJ_SUBMIT:-}"
+  if [[ -z "${LETTERBOX_DOORBELL:-}" ]]; then
+    if [[ -f "$BOX/env.sh" ]] && grep -Eq '^[[:space:]]*(export[[:space:]]+)?LETTERBOX_DOORBELL=' "$BOX/env.sh"; then
+      [[ -n "$submit" ]] || submit="$(sed -nE "s/^[[:space:]]*(export[[:space:]]+)?LETTERBOX_ZELLIJ_SUBMIT=['\"]?([^'\"[:space:]]*).*/\\2/p" "$BOX/env.sh" | tail -1)"
+    else
+      printf 'doorbell: not set up — your letters ring nobody. Run: letterbox zellij setup\n'
+      return 0
+    fi
+  fi
+  [[ "$submit" != 0 ]] || printf 'doorbell: typing is off (LETTERBOX_ZELLIJ_SUBMIT=0) — your letters wake nobody\n'
+  return 0
+}
+
 ring_doorbell() {
   local to="$1" type="$2" slug="$3" id="${4:-}" token="" rc=0
   # The wrapper is the SOLE stdout owner for doorbell-outcome v=1: the
   # adapter's stdout is a private pipe (captured, never forwarded raw), and
   # exactly one contract line is emitted here.
+  load_box_doorbell
   if [[ -z "${LETTERBOX_DOORBELL:-}" ]]; then
     emit_outcome no_live_surface adapter_unavailable -
     return 0
@@ -925,7 +959,8 @@ cmd_send() {
   final="$(publish_message "$to" "$type" "$slug" "$priority" "$requires_ack" "$re" "$deadline" "$body" "$thread" "$supersedes")"
   letter_id="$(basename "$final" .md)"
   printf 'sent: %s\n' "$final"
-  [[ "$priority" == now ]] && ring_doorbell "$to" "$type" "$slug" "$letter_id"
+  # Every letter rings: priority is a label for the reader, not a switch for the bell.
+  ring_doorbell "$to" "$type" "$slug" "$letter_id"
   return 0
 }
 
@@ -1051,7 +1086,8 @@ cmd_token() { # glance-dismiss a doorbell token: unhandled / filed / unknown
 
 check_stale_secs() {
   local days="${LETTERBOX_CHECK_STALE_DAYS:-14}"
-  printf '%s\n' $((days * 86400))
+  [[ "$days" =~ ^[0-9]{1,5}$ ]] || days=14
+  printf '%s\n' $((10#$days * 86400))
 }
 
 
@@ -1079,6 +1115,8 @@ print_progress_line() { # $1=letter file
   local stamp="$1.ack" note age ep
   [[ -f "$stamp" ]] || return 0
   note="$(awk '/^progress:/{sub(/^progress:[[:space:]]*/, ""); print; exit}' "$stamp" 2>/dev/null || true)"
+  # Notes are untrusted text: never pass terminal control sequences through.
+  note="$(printf '%s' "$note" | LC_ALL=C tr -d '[:cntrl:]' | LC_ALL=C sed $'s/\xc2[\x80-\x9f]//g')"
   [[ -n "$note" ]] || return 0
   if ep="$(progress_epoch "$stamp")"; then
     age="$(format_age "$ep")"
@@ -1243,7 +1281,7 @@ cmd_check() {
   stale_secs="$(check_stale_secs)"
   n=0
   for f in "$dir"/*.md; do
-    [[ -e "$f" ]] || break
+    [[ -e "$f" ]] || continue
     if ! id="$(frontmatter_value "$f" id)"; then
       stem="${f##*/}"; stem="${stem%.md}"
       label="$(display_id "$stem")"
@@ -1286,6 +1324,7 @@ cmd_check() {
   done
   # Filing and notes are this seat's own: neither line when checking another inbox.
   if [[ "$who" == "$ME" ]]; then
+    doorbell_line
     tidy_line
     notes_map --summary
   fi
@@ -1354,14 +1393,9 @@ cmd_ring() {
     emit_outcome no_live_surface surface_not_found -
     return 0
   fi
-  # Bridge services do not inherit a pane's setup environment. Use this
-  # mailbox's generated adapter configuration only when the caller supplied
-  # none; explicit service configuration remains authoritative.
-  if [[ -z "${LETTERBOX_DOORBELL:-}" && -f "$BOX/env.sh" ]]; then
-    # shellcheck disable=SC1090
-    source "$BOX/env.sh"
-    BOX="${LETTERBOX_DIR:-$BOX}"
-  fi
+  # Bridge services do not inherit a pane's setup environment: ring_doorbell
+  # reads this mailbox's generated env.sh when the caller supplied no doorbell,
+  # with the same rule as send and reply (the caller's box stays the box).
   need_agent "$to"
   case "$typ" in request|delegate|status|blocker|result|ack|nack|info) ;; *) die "invalid message type: $typ";; esac
   [[ "$id" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || die "invalid letter id"
@@ -1499,6 +1533,9 @@ cmd_reply() {
       parent_from="$(frontmatter_value "$msg" from)"
       expected_reply="$(inbox_path "$parent_from")/$(reply_file_for "$parent_id" "$type" "$ME")"
       if [[ -f "$expected_reply" || -f "$(processed_path "$parent_from")/$(basename "$expected_reply")" ]]; then
+        # The first attempt may have died between filing and its ring: ring
+        # again while the reply is still unread in the sender's inbox.
+        [[ -f "$expected_reply" ]] && ring_doorbell "$parent_from" "$type" "$slug" "$(frontmatter_value "$expected_reply" id)"
         printf 'already closed: %s (your %s reply is published)\n' "$(confirm_label "$msg")" "$type"
         return 0
       fi
@@ -1540,7 +1577,7 @@ cmd_reply() {
     reply_label="$(confirm_label "$REPLY_FILE")"
     release_lifecycle_lock
     trap - EXIT
-    [[ "$priority" == now && "$REPLY_ALREADY" == false ]] && ring_doorbell "$doorbell_to" "$type" "$slug" "$(frontmatter_value "$REPLY_FILE" id)"
+    [[ "$REPLY_FILE" == "$(inbox_path "$doorbell_to")"/* ]] && ring_doorbell "$doorbell_to" "$type" "$slug" "$(frontmatter_value "$REPLY_FILE" id)"
     printf 'acked: %s (in progress; reply: %s)\n' "$label" "$reply_label"
     return 0
   fi
@@ -1552,7 +1589,7 @@ cmd_reply() {
   rm -f "$msg.ack"
   release_lifecycle_lock
   trap - EXIT
-  [[ "$priority" == now && "$REPLY_ALREADY" == false ]] && ring_doorbell "$doorbell_to" "$type" "$slug" "$(frontmatter_value "$REPLY_FILE" id)"
+  [[ "$REPLY_FILE" == "$(inbox_path "$doorbell_to")"/* ]] && ring_doorbell "$doorbell_to" "$type" "$slug" "$(frontmatter_value "$REPLY_FILE" id)"
   printf 'closed: %s → %s/processed/ (reply: %s)\n' "$label" "$ME" "$reply_label"
 }
 
