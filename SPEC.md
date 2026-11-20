@@ -281,6 +281,8 @@ the default. Any other value must be whole seconds from 1 to 999 with no leading
 zero, or it is refused as `invalid_timeout` before any mux call, through
 `letterbox ring` as well.
 
+A proven pre-injection lookup timeout (`no_live_surface` / `helper_timeout`, no text and no Enter) is tried again by the wrapper: 3 lookups, 100 ms then 400 ms apart. The call returns within 12s. One attempt's backstop stays 4 × step + 5s + the pause, and a step that cannot finish inside the time still left is not started. The adapter's default step cap stays 1s. If the lookups are exhausted, the wrapper writes `.unresolved-rings/<recipient>/<letter-id>` (the record reason stays `helper_timeout`) and tells the sender to nudge. The contract line is `lookup_spent`, not `helper_timeout`. `helper_timeout` means this process did not spend a lookup retry, so a caller that retries only that reason may try again. `lookup_spent` means the wrapper already did. A wrapper that still emits `helper_timeout` is unchanged. If that record cannot be written, it does not say to nudge, the diagnostic has no path, and the contract line is still `lookup_spent`. A timeout after send or Enter starts stays `unconfirmed` and is not tried again. The record is live only while that letter is still a regular file in the recipient's inbox. Filing it removes the record. `check` names the ring only while the letter is still there, and removes a record whose letter has left.
+
 Enter pause. The adapter waits `LETTERBOX_DOORBELL_ENTER_DELAY` (default **2s**, whole
 seconds 0–5, 0 for no pause) between the doorbell text and its Enter; any other value
 is refused as `invalid_enter_delay` before a mux call. An agent terminal app that

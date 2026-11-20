@@ -170,7 +170,7 @@ else
   echo "FAIL: injected line carries sender + v0.3 token"; cat "$ZELLIJ_FAKE_LOG"; exit 1
 fi
 check "list-panes timeout → helper_timeout" "ZELLIJ_FAKE_LIST=sleep ZELLIJ_FAKE_SLEEP=5" \
-  'doorbell-outcome v=1 outcome=no_live_surface reason=helper_timeout target=-'
+  'doorbell-outcome v=1 outcome=no_live_surface reason=lookup_spent target=-'
 check "pane absent → surface_not_found"  "ZELLIJ_FAKE_LIST=empty" \
   'doorbell-outcome v=1 outcome=no_live_surface reason=surface_not_found target=-'
 check "patterns fallback → submitted"    "LETTERBOX_ZELLIJ_REGISTRY=$ROOT/missing.tsv LETTERBOX_ZELLIJ_PATTERNS=$ROOT/patterns.tsv ZELLIJ_FAKE_LIST=ok8" \
@@ -224,8 +224,8 @@ check "wrapper: valid line + nonzero exit → unconfirmed" "LETTERBOX_DOORBELL=$
   'doorbell-outcome v=1 outcome=no_live_surface reason=unconfirmed target=-'
 check "wrapper: pasted + nonzero exit → unconfirmed" "LETTERBOX_DOORBELL=$ROOT/valid-pasted-exit1.sh" \
   'doorbell-outcome v=1 outcome=no_live_surface reason=unconfirmed target=-'
-check "wrapper: helper_timeout + nonzero exit still forwards (retryable)" "LETTERBOX_DOORBELL=$ROOT/valid-ht-exit1.sh" \
-  'doorbell-outcome v=1 outcome=no_live_surface reason=helper_timeout target=-'
+check "wrapper: helper_timeout is spent, not forwarded" "LETTERBOX_DOORBELL=$ROOT/valid-ht-exit1.sh" \
+  'doorbell-outcome v=1 outcome=no_live_surface reason=lookup_spent target=-'
 check "wrapper: send_failed + nonzero exit still forwards (named reason)" "LETTERBOX_DOORBELL=$ROOT/valid-sf-exit1.sh" \
   'doorbell-outcome v=1 outcome=no_live_surface reason=send_failed target=-'
 # Runner-owned sentinel: a child exiting 124 on its own is NOT a timeout.
