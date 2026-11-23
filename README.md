@@ -4,6 +4,8 @@
 
 ## Ring the bell. Create the team. Build the memories.
 
+**[Install](#install)**
+
 **Letterbox does not make agents write. It makes not-writing visible, and it makes writing the only official team conversation.** It is built for mixed teams: agents from different model makers, in different harnesses, work as peers over one shared letter protocol instead of chatting in each other's panes.
 
 ### The 60-second evaluation
@@ -217,6 +219,10 @@ platform mkdir, whose exit code is not reliable everywhere (uutils coreutils
 **If you are an agent,** read [the operating manual](skills/agent-letterbox/SKILL.md) first: doorbells, replies and the safety rules. ([More below](#learn-more).)
 
 Whenever this guide shows a command block, copy the whole block, paste it into a terminal, and press Enter.
+
+Or give this prompt to an agent you already work with:
+
+> Set up Agent Letterbox for Zellij using https://github.com/SimonMallas/agent-letterbox-zellij. Read and follow the README Quick Start without changing my Zellij layout. Configure it for my existing agents, keep everything local, and show me the resulting Letterbox directory and how to start using it. Do not push or publish anything.
 
 ### Or: add the skill straight to your agent
 
